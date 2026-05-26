@@ -1,7 +1,7 @@
 import Foundation
 
 /// How safe it is to clean a given junk item.
-public enum SafetyLevel: String, Sendable, CaseIterable {
+public enum SafetyLevel: String, Codable, Sendable, CaseIterable {
 
     /// Safe to select by default in the UI.
     case safe
@@ -11,7 +11,7 @@ public enum SafetyLevel: String, Sendable, CaseIterable {
 }
 
 /// Broad category a junk rule belongs to, used to group items in the UI.
-public enum JunkCategory: String, Sendable, CaseIterable {
+public enum JunkCategory: String, Codable, Sendable, CaseIterable {
     case userCache
     case logs
     case trash
