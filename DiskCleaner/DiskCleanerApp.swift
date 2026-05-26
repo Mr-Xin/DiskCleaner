@@ -15,7 +15,7 @@ import SwiftUI
 @main
 struct DiskCleanerApp: App {
 
-    @State private var selection: Feature? = .storage
+    @State private var selection: Feature? = .overview
 
     init() {
         // Register the periodic scan-reminder activity (no-op if disabled).

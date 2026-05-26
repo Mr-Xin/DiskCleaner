@@ -2,7 +2,7 @@
 
 一款面向 macOS 的磁盘管理与清理工具：看清磁盘空间被什么占用、安全地回收无用空间、干净地卸载应用。
 
-> **项目状态：v0.8.2 — DiskFlow Sprint 1 完整收尾：Frame / Sidebar / Toolbar + 重设计 Settings + 4 个状态屏 + i18n 字符串系统。** 后续 Sprint 2 做 Dashboard 与 Smart Cleanup 中心。更新见 [`CHANGELOG.md`](CHANGELOG.md)。
+> **项目状态：v0.9.0 — DiskFlow Sprint 2: Dashboard 完整实现（Donut + Health Score + Memory mini + Smart Cleanup 3 卡）+ 5 个可复用 atom 组件（Chip / Donut / Bar / Card / Glyph）。** 后续 Sprint 2.5 做智能清理中心屏。更新见 [`CHANGELOG.md`](CHANGELOG.md)。
 
 ## 功能
 

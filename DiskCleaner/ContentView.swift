@@ -104,10 +104,31 @@ struct ContentView: View {
                     searchText: $searchText,
                     placeholderKey: "toolbar.search.placeholder",
                     onRefresh: {},
-                    onNotifications: {}
+                    onNotifications: {},
+                    trailingActions: { toolbarTrailingActions }
                 )
                 detailView
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+    }
+
+    /// Right-side toolbar actions. On the Dashboard we surface "Rescan" +
+    /// "Clean up X" per the DiskFlow design; other screens stay minimal.
+    @ViewBuilder
+    private var toolbarTrailingActions: some View {
+        if selection == .overview {
+            DesignButton(.ghost, size: .small, action: {}) {
+                Text("toolbar.action.rescan")
+            }
+            DesignButton(.primary, size: .small, action: {}) {
+                HStack(spacing: 4) {
+                    Image(systemName: "sparkles")
+                    Text(verbatim: String(
+                        format: NSLocalizedString("toolbar.action.cleanup", comment: ""),
+                        "12.4 GB"
+                    ))
+                }
             }
         }
     }
@@ -163,9 +184,9 @@ struct ContentView: View {
 
     @ViewBuilder
     private var detailView: some View {
-        switch selection ?? .storage {
+        switch selection ?? .overview {
         case .overview:
-            ComingSoonView(titleKey: "feature.overview",  systemImage: "square.grid.2x2",       plannedSprint: "Sprint 2")
+            DashboardView()
         case .storage:
             DiskMapView()
         case .largeFiles:
@@ -223,5 +244,5 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView(selection: .constant(.storage))
+    ContentView(selection: .constant(.overview))
 }

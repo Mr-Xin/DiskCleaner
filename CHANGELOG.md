@@ -2,6 +2,55 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，版本号采用 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.9.0] — 2026-05-26 — DiskFlow Sprint 2: Dashboard
+
+完整实现 DiskFlow §4.1 的 Overview / Dashboard 屏，覆盖 1.5fr/1fr 主网格 + Donut chart + Health Score + Memory mini + 3 张 Smart Cleanup 建议卡。同时把 5 个常用 atom 抽成独立组件供后续 Sprint 复用。
+
+### 新增
+
+**5 个可复用设计组件**（`DiskCleaner/Design/`）
+
+- `DesignChip.swift` —— pill 状态徽章，5 个变体（default / active / good / warn / danger）+ 可选 dot 指示器；匹配 `df-chip` 的玻璃背景与边框
+- `DesignDonut.swift` —— SwiftUI 实现的多段圆环图，每段 `Circle().trim().stroke()` + 微小段间隙；中央可显示渐变大标签 + 副标签
+- `DesignBar.swift` —— 渐变进度条 + 软光晕，4 个变体（default 蓝→青 / good / warn / danger）；用 `animation(.easeOut(0.2))` 平滑过渡
+- `DesignCard.swift` —— 统一卡片背景容器，3 个变体（default / elevated 加阴影 / glowBlue 蓝光晕，用于 Health Score 卡）；统一 `r-xl` 18pt 圆角 + line1 边框
+- `DesignGlyph.swift` —— 36×36 渐变方块带白色 2–3 字缩写文字；按 `DesignGlyphKind`（apps / docs / video / photo / system / cache / folder / archive / other）拾取颜色
+
+**DashboardView**（`DiskCleaner/Features/DashboardView.swift`）
+
+- 问候栏：根据当前时段切换「早上好/下午好/晚上好」+ 用户长名 `NSFullUserName()`；右侧卷标 chip + 健康分 chip（带 dot + good/warn/danger 状态色）
+- 主网格：1.5fr 存储分布卡（含 220pt Donut + 6 段分类色 + 软蓝光晕背景 + 分类图例 6 行）/ 1fr 右列（Health Score `glowBlue` 卡 + Memory mini `default` 卡）
+- Health Score：64pt `linear-gradient(白→blueHi→cyan)` 大数字 + 「/ 100」+ 本周变化指示 + DesignBar(good) + 摘要文字 + primary CTA「运行智能清理」
+- Memory mini：未启用时显示「暂未启用」chip + 灰色占位；启用后切实际数值 + 颜色状态条
+- 智能清理段：标题（sparkles 图标 + `dashboard.smart.title` + `· N 项建议 · X.X GB`）+ 「查看全部 →」ghost 按钮；下方 3 列建议卡（每张 DesignGlyph + 标签 + 标题 + 大额数字 + 描述 + 查看/跳过按钮）
+- `DashboardSnapshot` 值类型：把所有渲染所需字段抽成数据快照，后续 Sprint 直接换上真实引擎数据即可，View 不需要再动
+
+**Toolbar trailing actions**
+
+- `ContentView.toolbarTrailingActions`：仅在 Overview 屏显示「重新扫描」ghost 按钮 + 「清理 12.4 GB」primary 按钮（含 sparkles 图标）；其他屏 EmptyView
+- `DiskCleanerApp.selection` 默认值从 `.storage` 改为 `.overview`，第一次打开直接落到 Dashboard
+
+### 改动
+
+**i18n 字符串**
+
+- `Localizable.xcstrings` 新增 36 条 Dashboard 命名空间 key（`dashboard.greeting.*` / `dashboard.chip.*` / `dashboard.storage.*` / `dashboard.category.*` / `dashboard.donut.*` / `dashboard.health.*` / `dashboard.memory.*` / `dashboard.smart.*` / `toolbar.action.*`），每条都给 zh-Hans + en
+- 总字符串条目从 242 增至 278
+- 带 `%@` / `%lld` 占位符的参数化文案统一用 `String(format: NSLocalizedString(...), args)` + `Text(verbatim:)`，避免 SwiftUI `Text("key \(arg)")` 把 key 变成 `key %lld` 造成查找失败
+
+**Feature 路由**
+
+- `ContentView.detailView` 把 `.overview` 从 `ComingSoonView(plannedSprint: "Sprint 2")` 切到真正的 `DashboardView()`
+- ContentView 的 `?? .storage` 默认 fallback 也改为 `?? .overview`，与 App 默认值保持一致
+
+### 后续
+
+Sprint 2.5 / Sprint 3 候选：
+
+- 智能清理中心 Smart Cleanup 屏（README §4.1 ✨，是 Dashboard CTA 与「查看全部」按钮的跳转目标，含风险评级 + 多选 + 浮动操作栏）
+- Storage Analyzer Sunburst（README Sprint 3）
+- Dashboard 的数据从 placeholder 切到 `ScanSnapshot`（需先做类别分组器）
+
 ## [0.8.2] — 2026-05-26 — DiskFlow Sprint 1 收尾
 
 补齐 Sprint 1 剩下的部分（Settings + 4 个 States）+ 接入 i18n 字符串系统，所有新文案改用语义 key。
