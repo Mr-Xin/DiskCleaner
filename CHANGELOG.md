@@ -2,6 +2,15 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，版本号采用 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.6.1] — 2026-05-26
+
+### 改进
+
+- 侧边栏底部菜单按钮加高，视觉更舒展：
+  - 左侧 app 图标改为 32×32 的圆形高亮（带浅色 tint 底色）
+  - 主标题「DiskCleaner」+ 副标题「v0.x.y」（自动从 Bundle 读取 `CFBundleShortVersionString`）
+  - 内外 padding 都微增，整体高度从 ~32pt 提到 ~54pt
+
 ## [0.6.0] — 2026-05-26
 
 侧边栏左下角加 Claude 风格的快捷菜单。

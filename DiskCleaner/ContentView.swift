@@ -139,24 +139,40 @@ struct ContentView: View {
                 Label("关于 DiskCleaner", systemImage: "info.circle")
             }
         } label: {
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 Image(systemName: "internaldrive.fill")
+                    .font(.system(size: 16))
                     .foregroundStyle(.tint)
-                Text(verbatim: "DiskCleaner")
-                    .foregroundStyle(.primary)
+                    .frame(width: 32, height: 32)
+                    .background(.tint.opacity(0.15), in: Circle())
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(verbatim: "DiskCleaner")
+                        .fontWeight(.medium)
+                        .foregroundStyle(.primary)
+                    Text(verbatim: "v\(appVersion)")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+
                 Spacer()
+
                 Image(systemName: "chevron.up.chevron.down")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
             .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton)
         .menuIndicator(.hidden)
         .padding(.horizontal, 6)
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
+    }
+
+    private var appVersion: String {
+        (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "0.0"
     }
 
     /// Each language is shown in its own name, with a checkmark on the
