@@ -18,6 +18,19 @@ public struct JunkItem: Identifiable, Sendable {
     }
 }
 
+/// Progress reported while `JunkRulesEngine` is scanning.
+public struct JunkScanProgress: Sendable {
+    public var itemsFound: Int
+    public var bytesFound: Int64
+    public var currentRule: String
+
+    public init(itemsFound: Int = 0, bytesFound: Int64 = 0, currentRule: String = "") {
+        self.itemsFound = itemsFound
+        self.bytesFound = bytesFound
+        self.currentRule = currentRule
+    }
+}
+
 /// Matches the junk-rule catalog against the file system.
 public struct JunkRulesEngine: Sendable {
 
@@ -32,12 +45,18 @@ public struct JunkRulesEngine: Sendable {
     ///
     /// A rule path ending in `/*` contributes one `JunkItem` per direct child
     /// of that directory; any other path contributes a single item.
-    public func scan() async throws -> [JunkItem] {
+    public func scan(
+        onProgress: (@Sendable (JunkScanProgress) -> Void)? = nil
+    ) async throws -> [JunkItem] {
         let fileManager = FileManager.default
         var items: [JunkItem] = []
+        var progress = JunkScanProgress()
 
         for rule in rules {
             try Task.checkCancellation()
+            progress.currentRule = rule.name
+            onProgress?(progress)
+
             for pattern in rule.paths {
                 let expanded = FileSystemUtilities.expandingTilde(pattern)
 
@@ -52,6 +71,9 @@ public struct JunkRulesEngine: Sendable {
                         let size = FileSystemUtilities.totalAllocatedSize(of: childURL)
                         if size > 0 {
                             items.append(JunkItem(rule: rule, url: childURL, size: size))
+                            progress.itemsFound += 1
+                            progress.bytesFound += size
+                            onProgress?(progress)
                         }
                     }
                 } else if fileManager.fileExists(atPath: expanded) {
@@ -59,6 +81,9 @@ public struct JunkRulesEngine: Sendable {
                     let size = FileSystemUtilities.totalAllocatedSize(of: url)
                     if size > 0 {
                         items.append(JunkItem(rule: rule, url: url, size: size))
+                        progress.itemsFound += 1
+                        progress.bytesFound += size
+                        onProgress?(progress)
                     }
                 }
             }

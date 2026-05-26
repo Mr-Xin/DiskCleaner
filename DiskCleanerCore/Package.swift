@@ -13,12 +13,19 @@ let package = Package(
         )
     ],
     targets: [
+        // Thin C bridge for macOS-specific APIs that have no clean Swift
+        // equivalent — currently just APFS clone-id lookup via getattrlist.
         .target(
-            name: "DiskCleanerCore"
+            name: "DiskCleanerCoreBridge",
+            publicHeadersPath: "include"
+        ),
+        .target(
+            name: "DiskCleanerCore",
+            dependencies: ["DiskCleanerCoreBridge"]
         ),
         .testTarget(
             name: "DiskCleanerCoreTests",
-            dependencies: ["DiskCleanerCore"]
+            dependencies: ["DiskCleanerCore", "DiskCleanerCoreBridge"]
         )
     ]
 )

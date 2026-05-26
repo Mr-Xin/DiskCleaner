@@ -2,6 +2,50 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，版本号采用 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.2.0] — 2026-05-26
+
+让现有功能更扎实——扫描看得见、可取消，APFS 克隆不再误判，删了什么都查得到。
+
+### 改进
+
+**性能**
+
+- `DiskScanner` 改为并行扫描：根目录的顶层子树用 `TaskGroup` 并发遍历，多核机器上明显更快。
+
+**进度与取消**
+
+- 引擎进度按 ~10Hz 节流回调，UI 显示已扫描项数、累计字节与当前路径。
+- 磁盘可视化、垃圾清理、大文件 / 重复文件三个扫描界面都加了「取消」按钮（Esc 同样可取消）。
+- `JunkRulesEngine.scan` 新增 `onProgress` 回调。
+
+**正确性**
+
+- 新增 `DiskCleanerCoreBridge` C 桥，封装 `getattrlist` 取 APFS clone identifier。
+- `DuplicateFinder` 用 clone id 排除 APFS 克隆——同源克隆不再被误报为可清理的重复。
+
+**审计与可追溯**
+
+- 新增 `AuditLog` actor，每次"移到废纸篓"以 JSONL 追加到 `~/Library/Application Support/DiskCleaner/audit.log`。
+- 新增「最近操作」侧边栏页：浏览历史、在访达中显示日志文件、一键清空。
+- `DeletionService` 增加 `source` 参数，记录是哪个功能触发的删除（`disk-map` / `junk-clean` / `duplicates` / `uninstall`）。
+
+**权限体验**
+
+- `ScanResult` 新增 `blockedDirectoryCount`，扫描时统计因权限读取失败的目录数。
+- 扫描结束若 FDA 未授予且受阻目录 > 0，磁盘可视化与重复文件界面顶部出现橙色横幅，附带「去授权」一键跳转。
+
+### 测试
+
+- 新增：`AuditLogTests`、`CloneIDTests`。
+- 更新：`DiskScannerTests` 适配新的 `ScanResult` API 并加了进度回调断言。
+
+### 已知限制
+
+- `getattrlistbulk` 的全面迁移（更深层的扫描提速）留待 v0.3。
+- 应用卸载暂不自动 `launchctl unload` LaunchAgent / Daemon（留待 v0.3）。
+- 系统级缓存清理（`/Library/Caches/*`）仍需要管理员权限，本版本不会处理。
+- 代码签名 / 公证 / 打包尚未做，目前仅源码本地构建运行。
+
 ## [0.1.0] — 2026-05-26
 
 第一个可运行版本：四大核心功能全部实现。

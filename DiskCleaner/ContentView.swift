@@ -3,18 +3,19 @@
 //  DiskCleaner
 //
 //  The application shell: a Full Disk Access gate, then a sidebar that routes
-//  to the four feature screens.
+//  to the four feature screens plus the audit log.
 //
 
 import SwiftUI
 import DiskCleanerCore
 
-/// The four top-level features of DiskCleaner.
+/// Top-level features of DiskCleaner.
 enum Feature: String, CaseIterable, Identifiable {
     case visualization
     case junk
     case duplicates
     case uninstall
+    case audit
 
     var id: String { rawValue }
 
@@ -24,6 +25,7 @@ enum Feature: String, CaseIterable, Identifiable {
         case .junk:          "垃圾清理"
         case .duplicates:    "大文件 / 重复文件"
         case .uninstall:     "应用卸载"
+        case .audit:         "最近操作"
         }
     }
 
@@ -33,6 +35,7 @@ enum Feature: String, CaseIterable, Identifiable {
         case .junk:          "trash"
         case .duplicates:    "doc.on.doc"
         case .uninstall:     "xmark.bin"
+        case .audit:         "clock.arrow.circlepath"
         }
     }
 }
@@ -81,6 +84,7 @@ struct ContentView: View {
         case .junk:          JunkCleaningView()
         case .duplicates:    DuplicatesView()
         case .uninstall:     UninstallView()
+        case .audit:         AuditLogView()
         }
     }
 }

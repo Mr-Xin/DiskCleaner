@@ -23,6 +23,9 @@ final class JunkCleaningViewModel {
     var hasScanned = false
     var statusMessage: String?
     var errorMessage: String?
+    var scanProgress: JunkScanProgress?
+
+    @ObservationIgnored private var scanTask: Task<Void, Never>?
 
     var totalFoundSize: Int64 {
         items.reduce(0) { $0 + $1.size }
@@ -32,31 +35,46 @@ final class JunkCleaningViewModel {
         items.filter { selectedIDs.contains($0.id) }.reduce(0) { $0 + $1.size }
     }
 
-    /// Items grouped by category, each group ordered by size, groups ordered
-    /// by their total size.
     var groupedItems: [(category: JunkCategory, items: [JunkItem])] {
         Dictionary(grouping: items, by: { $0.rule.category })
             .map { (category: $0.key, items: $0.value.sorted { $0.size > $1.size }) }
-            .sorted {
-                $0.items.reduce(0) { $0 + $1.size } > $1.items.reduce(0) { $0 + $1.size }
+            .sorted { lhs, rhs in
+                lhs.items.reduce(0) { $0 + $1.size } > rhs.items.reduce(0) { $0 + $1.size }
             }
     }
 
     func scan() {
+        scanTask?.cancel()
         isScanning = true
         errorMessage = nil
         statusMessage = nil
-        Task {
-            do {
-                let found = try await JunkRulesEngine().scan()
-                self.items = found
-                self.selectedIDs = Set(found.filter { $0.rule.safety == .safe }.map { $0.id })
-                self.hasScanned = true
-            } catch {
-                self.errorMessage = error.localizedDescription
+        scanProgress = nil
+        items = []
+        selectedIDs = []
+
+        scanTask = Task { [weak self] in
+            let progressHandler: (@Sendable (JunkScanProgress) -> Void) = { [weak self] progress in
+                Task { @MainActor [weak self] in
+                    self?.scanProgress = progress
+                }
             }
-            self.isScanning = false
+            do {
+                let found = try await JunkRulesEngine().scan(onProgress: progressHandler)
+                self?.items = found
+                self?.selectedIDs = Set(found.filter { $0.rule.safety == .safe }.map { $0.id })
+                self?.hasScanned = true
+            } catch is CancellationError {
+                // ignored
+            } catch {
+                self?.errorMessage = error.localizedDescription
+            }
+            self?.isScanning = false
         }
+    }
+
+    func cancelScan() {
+        scanTask?.cancel()
+        isScanning = false
     }
 
     func isSelected(_ item: JunkItem) -> Bool {
@@ -77,21 +95,24 @@ final class JunkCleaningViewModel {
         isCleaning = true
         errorMessage = nil
         statusMessage = nil
-        Task {
+        Task { [weak self] in
             do {
-                let result = try await DeletionService().moveToTrash(targets.map { $0.url })
+                let result = try await DeletionService().moveToTrash(
+                    targets.map { $0.url },
+                    source: "junk-clean"
+                )
                 let trashedURLs = Set(result.trashed)
-                self.items.removeAll { trashedURLs.contains($0.url) }
-                self.selectedIDs = []
+                self?.items.removeAll { trashedURLs.contains($0.url) }
+                self?.selectedIDs = []
                 if result.failures.isEmpty {
-                    self.statusMessage = "已将 \(result.trashed.count) 项移到废纸篓。"
+                    self?.statusMessage = "已将 \(result.trashed.count) 项移到废纸篓。"
                 } else {
-                    self.statusMessage = "已清理 \(result.trashed.count) 项；\(result.failures.count) 项失败（可能需要管理员权限）。"
+                    self?.statusMessage = "已清理 \(result.trashed.count) 项；\(result.failures.count) 项失败（可能需要管理员权限）。"
                 }
             } catch {
-                self.errorMessage = error.localizedDescription
+                self?.errorMessage = error.localizedDescription
             }
-            self.isCleaning = false
+            self?.isCleaning = false
         }
     }
 }
@@ -131,12 +152,13 @@ struct JunkCleaningView: View {
             }
         }
         .padding(10)
+        .disabled(model.isScanning)
     }
 
     @ViewBuilder
     private var content: some View {
         if model.isScanning {
-            centeredProgress("正在扫描垃圾文件…")
+            scanningView
         } else if model.isCleaning {
             centeredProgress("正在移到废纸篓…")
         } else if model.items.isEmpty {
@@ -159,6 +181,28 @@ struct JunkCleaningView: View {
                 Button("扫描垃圾") { model.scan() }
             }
         }
+    }
+
+    private var scanningView: some View {
+        VStack(spacing: 14) {
+            ProgressView()
+            if let progress = model.scanProgress {
+                Text("已发现 \(progress.itemsFound) 项 · \(ByteSize.formatted(progress.bytesFound))")
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                if !progress.currentRule.isEmpty {
+                    Text("正在检查：\(progress.currentRule)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                Text("正在扫描垃圾文件…").foregroundStyle(.secondary)
+            }
+            Button("取消", role: .cancel) { model.cancelScan() }
+                .keyboardShortcut(.escape, modifiers: [])
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(30)
     }
 
     private var itemList: some View {

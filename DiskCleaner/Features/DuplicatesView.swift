@@ -3,7 +3,7 @@
 //  DiskCleaner
 //
 //  Feature 3 — large files and duplicate files: scan a folder, then list the
-//  biggest files and groups of identical files.
+//  biggest files and groups of identical files (APFS clones excluded).
 //
 
 import SwiftUI
@@ -37,9 +37,13 @@ final class DuplicatesViewModel {
     var isScanning = false
     var hasScanned = false
     var errorMessage: String?
+    var scanProgress: ScanProgress?
+    var phaseMessage = ""
+    var permissionWarning: String?
 
     @ObservationIgnored private var rootURL: URL?
     @ObservationIgnored private var scanTask: Task<Void, Never>?
+    @ObservationIgnored private let permissionsChecker = PermissionsChecker()
 
     var reclaimableFromDuplicates: Int64 {
         duplicateGroups.reduce(0) { $0 + $1.reclaimableBytes }
@@ -60,30 +64,55 @@ final class DuplicatesViewModel {
         if let rootURL { startScan(rootURL) }
     }
 
+    func cancelScan() {
+        scanTask?.cancel()
+        isScanning = false
+    }
+
     private func startScan(_ url: URL) {
         scanTask?.cancel()
         rootURL = url
         isScanning = true
         errorMessage = nil
+        scanProgress = nil
+        phaseMessage = "正在扫描文件树…"
+        permissionWarning = nil
         largeFiles = []
         duplicateGroups = []
 
-        scanTask = Task {
+        scanTask = Task { [weak self] in
+            let progressHandler: (@Sendable (ScanProgress) -> Void) = { [weak self] progress in
+                Task { @MainActor [weak self] in
+                    self?.scanProgress = progress
+                }
+            }
             do {
-                let tree = try await DiskScanner().scan(root: url)
+                let scanResult = try await DiskScanner().scan(root: url, onProgress: progressHandler)
                 if Task.isCancelled { return }
+
+                self?.scanProgress = nil
+                self?.phaseMessage = "正在查找大文件与重复文件…"
+
+                guard let self else { return }
+                let tree = scanResult.root
                 self.largeFiles = LargeFileFinder().find(in: tree)
+
                 let urls = tree.allFiles().map { $0.url }
                 let groups = try await DuplicateFinder().findDuplicates(among: urls)
                 if Task.isCancelled { return }
                 self.duplicateGroups = groups
                 self.hasScanned = true
+
+                if scanResult.blockedDirectoryCount > 0 && !self.permissionsChecker.hasFullDiskAccess() {
+                    self.permissionWarning = "扫描中有 \(scanResult.blockedDirectoryCount) 个目录因权限受阻。授予完全磁盘访问后重新分析，结果会更完整。"
+                }
             } catch is CancellationError {
-                // Superseded by a newer scan — ignore.
+                // ignored
             } catch {
-                self.errorMessage = error.localizedDescription
+                self?.errorMessage = error.localizedDescription
             }
-            self.isScanning = false
+            self?.isScanning = false
+            self?.phaseMessage = ""
         }
     }
 
@@ -92,14 +121,29 @@ final class DuplicatesViewModel {
     }
 
     func moveToTrash(_ url: URL) {
-        Task {
+        Task { [weak self] in
             do {
-                _ = try await DeletionService().moveToTrash([url])
-                self.rescan()
+                _ = try await DeletionService().moveToTrash([url], source: "duplicates")
+                self?.rescan()
             } catch {
-                self.errorMessage = error.localizedDescription
+                self?.errorMessage = error.localizedDescription
             }
         }
+    }
+
+    func dismissPermissionWarning() {
+        permissionWarning = nil
+    }
+
+    func openSystemSettings() {
+        let candidates = [
+            "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_AllFiles",
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
+        ]
+        for urlString in candidates {
+            if let url = URL(string: urlString), NSWorkspace.shared.open(url) { return }
+        }
+        NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/System Settings.app"))
     }
 }
 
@@ -147,7 +191,7 @@ struct DuplicatesView: View {
     @ViewBuilder
     private var content: some View {
         if model.isScanning {
-            centeredProgress("正在分析文件…")
+            scanningView
         } else if let message = model.errorMessage {
             ContentUnavailableView(
                 "分析失败",
@@ -163,11 +207,45 @@ struct DuplicatesView: View {
                 Button("选择文件夹") { model.chooseFolderAndScan() }
             }
         } else {
-            switch model.mode {
-            case .largeFiles: largeFilesList
-            case .duplicates: duplicatesList
+            VStack(spacing: 0) {
+                if let warning = model.permissionWarning {
+                    PermissionBanner(
+                        message: warning,
+                        onOpenSettings: { model.openSystemSettings() },
+                        onDismiss: { model.dismissPermissionWarning() }
+                    )
+                }
+                switch model.mode {
+                case .largeFiles: largeFilesList
+                case .duplicates: duplicatesList
+                }
             }
         }
+    }
+
+    private var scanningView: some View {
+        VStack(spacing: 14) {
+            ProgressView()
+            if !model.phaseMessage.isEmpty {
+                Text(model.phaseMessage)
+                    .foregroundStyle(.secondary)
+            }
+            if let progress = model.scanProgress {
+                Text("\(progress.scannedItemCount) 项 · \(ByteSize.formatted(progress.bytesScanned))")
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                Text(progress.currentPath)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(maxWidth: 480)
+            }
+            Button("取消", role: .cancel) { model.cancelScan() }
+                .keyboardShortcut(.escape, modifiers: [])
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(30)
     }
 
     @ViewBuilder
@@ -229,13 +307,5 @@ struct DuplicatesView: View {
                 }
             }
         }
-    }
-
-    private func centeredProgress(_ text: String) -> some View {
-        VStack(spacing: 12) {
-            ProgressView()
-            Text(text).foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

@@ -1,4 +1,5 @@
 import Foundation
+import DiskCleanerCoreBridge
 
 /// A set of files whose contents are identical.
 public struct DuplicateGroup: Identifiable, Sendable {
@@ -25,9 +26,9 @@ public struct DuplicateGroup: Identifiable, Sendable {
 /// Finds duplicate files via a three-stage pipeline:
 /// 1. group by size, 2. partial hash, 3. full hash.
 ///
-/// Hard links are excluded by inode identity — deleting a hard link frees no
-/// space. APFS clones are *not* detected (they have distinct inodes); that is
-/// a known limitation to be addressed in a later phase.
+/// Files that share physical storage on disk are excluded — deleting them
+/// frees no space. This covers both POSIX hard links (same inode) and APFS
+/// clones (different inode but shared extents, detected via clone identifier).
 public struct DuplicateFinder: Sendable {
 
     private let hashService = HashService()
@@ -57,7 +58,7 @@ public struct DuplicateFinder: Sendable {
                     try await hashService.fullHash(of: $0)
                 }
                 for fullBucket in byFull where fullBucket.count > 1 {
-                    let unique = withoutHardLinkDuplicates(fullBucket)
+                    let unique = withoutSharedStorage(fullBucket)
                     if unique.count > 1 {
                         groups.append(DuplicateGroup(urls: unique, fileSize: size))
                     }
@@ -89,18 +90,26 @@ public struct DuplicateFinder: Sendable {
         return Int64(size)
     }
 
-    /// Removes URLs that point at the same physical file (hard links).
-    private func withoutHardLinkDuplicates(_ urls: [URL]) -> [URL] {
+    /// Removes URLs that point at the same physical storage — POSIX hard
+    /// links (same inode) and APFS clones (same clone identifier).
+    private func withoutSharedStorage(_ urls: [URL]) -> [URL] {
         var seenInodes: Set<Int> = []
+        var seenCloneIDs: Set<UInt64> = []
         var result: [URL] = []
         for url in urls {
+            var inode: Int? = nil
             if
                 let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
-                let inode = attributes[.systemFileNumber] as? Int
+                let value = attributes[.systemFileNumber] as? Int
             {
-                if seenInodes.contains(inode) { continue }
-                seenInodes.insert(inode)
+                inode = value
             }
+            let cloneID = url.path.withCString { dc_get_clone_id($0) }
+
+            if let inode, seenInodes.contains(inode) { continue }
+            if cloneID != 0 && seenCloneIDs.contains(cloneID) { continue }
+            if let inode { seenInodes.insert(inode) }
+            if cloneID != 0 { seenCloneIDs.insert(cloneID) }
             result.append(url)
         }
         return result

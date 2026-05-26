@@ -93,7 +93,7 @@ final class UninstallViewModel {
         statusMessage = nil
         Task {
             do {
-                let result = try await DeletionService().moveToTrash(targets)
+                let result = try await DeletionService().moveToTrash(targets, source: "uninstall")
                 if result.failures.isEmpty {
                     self.statusMessage = "已将 \(app.name) 及 \(leftoverURLs.count) 个关联文件移到废纸篓。"
                 } else {

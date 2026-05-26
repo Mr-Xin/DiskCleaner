@@ -3,7 +3,8 @@
 //  DiskCleaner
 //
 //  Feature 1 — disk space visualization: scan a folder and explore it as a
-//  treemap plus a size-ordered breakdown list.
+//  treemap plus a size-ordered breakdown list. Reports live progress and
+//  flags Full Disk Access issues when many directories are unreadable.
 //
 
 import SwiftUI
@@ -22,9 +23,12 @@ final class DiskMapViewModel {
     var selectedNodeID: UUID?
     var isScanning = false
     var errorMessage: String?
+    var scanProgress: ScanProgress?
+    var permissionWarning: String?
 
     @ObservationIgnored private var rootURL: URL?
     @ObservationIgnored private var scanTask: Task<Void, Never>?
+    @ObservationIgnored private let permissionsChecker = PermissionsChecker()
 
     func chooseFolder() {
         let panel = NSOpenPanel()
@@ -45,27 +49,43 @@ final class DiskMapViewModel {
         if let rootURL { startScan(rootURL) }
     }
 
+    func cancelScan() {
+        scanTask?.cancel()
+        isScanning = false
+    }
+
     private func startScan(_ url: URL) {
         scanTask?.cancel()
         rootURL = url
         isScanning = true
         errorMessage = nil
+        scanProgress = nil
+        permissionWarning = nil
         tree = nil
         currentNode = nil
         selectedNodeID = nil
 
-        scanTask = Task {
+        scanTask = Task { [weak self] in
+            let progressHandler: (@Sendable (ScanProgress) -> Void) = { [weak self] progress in
+                Task { @MainActor [weak self] in
+                    self?.scanProgress = progress
+                }
+            }
             do {
-                let scanned = try await DiskScanner().scan(root: url)
+                let result = try await DiskScanner().scan(root: url, onProgress: progressHandler)
                 if Task.isCancelled { return }
-                self.tree = scanned
-                self.currentNode = scanned
+                guard let self else { return }
+                self.tree = result.root
+                self.currentNode = result.root
+                if result.blockedDirectoryCount > 0 && !self.permissionsChecker.hasFullDiskAccess() {
+                    self.permissionWarning = "扫描中有 \(result.blockedDirectoryCount) 个目录因权限受阻。授予完全磁盘访问后重新扫描，结果会更完整。"
+                }
             } catch is CancellationError {
                 // Superseded by a newer scan — ignore.
             } catch {
-                self.errorMessage = error.localizedDescription
+                self?.errorMessage = error.localizedDescription
             }
-            self.isScanning = false
+            self?.isScanning = false
         }
     }
 
@@ -86,14 +106,29 @@ final class DiskMapViewModel {
     }
 
     func moveToTrash(_ node: FileNode) {
-        Task {
+        Task { [weak self] in
             do {
-                _ = try await DeletionService().moveToTrash([node.url])
-                self.rescan()
+                _ = try await DeletionService().moveToTrash([node.url], source: "disk-map")
+                self?.rescan()
             } catch {
-                self.errorMessage = error.localizedDescription
+                self?.errorMessage = error.localizedDescription
             }
         }
+    }
+
+    func dismissPermissionWarning() {
+        permissionWarning = nil
+    }
+
+    func openSystemSettings() {
+        let candidates = [
+            "x-apple.systempreferences:com.apple.settings.PrivacySecurity.extension?Privacy_AllFiles",
+            "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles"
+        ]
+        for urlString in candidates {
+            if let url = URL(string: urlString), NSWorkspace.shared.open(url) { return }
+        }
+        NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/System Settings.app"))
     }
 }
 
@@ -143,7 +178,7 @@ struct DiskMapView: View {
     @ViewBuilder
     private var content: some View {
         if model.isScanning {
-            centeredProgress("正在扫描…")
+            scanningView
         } else if let message = model.errorMessage {
             ContentUnavailableView(
                 "扫描失败",
@@ -151,20 +186,29 @@ struct DiskMapView: View {
                 description: Text(message)
             )
         } else if let node = model.currentNode {
-            if node.children.isEmpty {
-                ContentUnavailableView("这个文件夹是空的", systemImage: "folder")
-            } else {
-                VSplitView {
-                    TreemapView(
-                        node: node,
-                        selectedID: model.selectedNodeID,
-                        onSelect: { model.selectedNodeID = $0.id },
-                        onDrill: { model.drill(into: $0) }
+            VStack(spacing: 0) {
+                if let warning = model.permissionWarning {
+                    PermissionBanner(
+                        message: warning,
+                        onOpenSettings: { model.openSystemSettings() },
+                        onDismiss: { model.dismissPermissionWarning() }
                     )
-                    .frame(minHeight: 200)
+                }
+                if node.children.isEmpty {
+                    ContentUnavailableView("这个文件夹是空的", systemImage: "folder")
+                } else {
+                    VSplitView {
+                        TreemapView(
+                            node: node,
+                            selectedID: model.selectedNodeID,
+                            onSelect: { model.selectedNodeID = $0.id },
+                            onDrill: { model.drill(into: $0) }
+                        )
+                        .frame(minHeight: 200)
 
-                    childrenList(node)
-                        .frame(minHeight: 160)
+                        childrenList(node)
+                            .frame(minHeight: 160)
+                    }
                 }
             }
         } else {
@@ -176,6 +220,29 @@ struct DiskMapView: View {
                 Button("扫描主目录") { model.scanHomeFolder() }
             }
         }
+    }
+
+    private var scanningView: some View {
+        VStack(spacing: 14) {
+            ProgressView()
+            if let progress = model.scanProgress {
+                Text("\(progress.scannedItemCount) 项 · \(ByteSize.formatted(progress.bytesScanned))")
+                    .foregroundStyle(.secondary)
+                    .monospacedDigit()
+                Text(progress.currentPath)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(maxWidth: 480)
+            } else {
+                Text("正在扫描…").foregroundStyle(.secondary)
+            }
+            Button("取消", role: .cancel) { model.cancelScan() }
+                .keyboardShortcut(.escape, modifiers: [])
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(30)
     }
 
     private func childrenList(_ node: FileNode) -> some View {
@@ -202,14 +269,6 @@ struct DiskMapView: View {
                 Button("移到废纸篓", role: .destructive) { model.moveToTrash(child) }
             }
         }
-    }
-
-    private func centeredProgress(_ text: String) -> some View {
-        VStack(spacing: 12) {
-            ProgressView()
-            Text(text).foregroundStyle(.secondary)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -273,5 +332,34 @@ private struct TreemapTileView: View {
         let scalarSum = node.name.unicodeScalars.reduce(0) { $0 &+ Int($1.value) }
         let hue = Double(scalarSum % 360) / 360.0
         return Color(hue: hue, saturation: 0.42, brightness: 0.82)
+    }
+}
+
+// MARK: - Permission Banner (shared style)
+
+struct PermissionBanner: View {
+
+    let message: String
+    let onOpenSettings: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "exclamationmark.shield.fill")
+                .foregroundStyle(.orange)
+            Text(message)
+                .font(.callout)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer()
+            Button("去授权", action: onOpenSettings)
+            Button {
+                onDismiss()
+            } label: {
+                Image(systemName: "xmark")
+            }
+            .buttonStyle(.borderless)
+        }
+        .padding(10)
+        .background(.orange.opacity(0.12))
     }
 }

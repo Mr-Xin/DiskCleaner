@@ -41,19 +41,27 @@ public struct DeletionResult: Sendable {
 /// Performs deletions.
 ///
 /// By design the default — and, for now, only — operation is "move to Trash",
-/// which is fully reversible. Permanent deletion will be added later behind an
-/// extra layer of confirmation.
+/// which is fully reversible. Each deletion writes an entry to the shared
+/// `AuditLog` so the user can review what happened.
 public struct DeletionService: Sendable {
 
-    public init() {}
+    private let auditLog: AuditLog?
 
-    /// Moves the given files to the Trash.
+    public init(auditLog: AuditLog? = AuditLog.shared) {
+        self.auditLog = auditLog
+    }
+
+    /// Moves the given files to the Trash and records each attempt in the
+    /// audit log.
     ///
-    /// Every URL is first checked against `ProtectedPaths`. If *any* of them is
-    /// protected, the whole batch is rejected before a single file is touched.
-    /// Individual files that fail for other reasons (missing, no permission)
-    /// are collected in `DeletionResult.failures` rather than aborting.
-    public func moveToTrash(_ urls: [URL]) async throws -> DeletionResult {
+    /// - Parameters:
+    ///   - urls: Files to delete.
+    ///   - source: Short tag identifying which feature initiated the deletion;
+    ///             recorded in the audit log entry.
+    public func moveToTrash(
+        _ urls: [URL],
+        source: String = "unknown"
+    ) async throws -> DeletionResult {
         for url in urls where ProtectedPaths.isProtected(url) {
             throw DeletionError.pathIsProtected(url)
         }
@@ -64,11 +72,26 @@ public struct DeletionService: Sendable {
 
         for url in urls {
             try Task.checkCancellation()
+            let sizeBefore = FileSystemUtilities.totalAllocatedSize(of: url)
             do {
                 try fileManager.trashItem(at: url, resultingItemURL: nil)
                 trashed.append(url)
+                await auditLog?.record(AuditEntry(
+                    timestamp: Date(),
+                    url: url,
+                    sizeBytes: sizeBefore,
+                    source: source,
+                    success: true
+                ))
             } catch {
                 failures.append(FailedDeletion(url: url, reason: error.localizedDescription))
+                await auditLog?.record(AuditEntry(
+                    timestamp: Date(),
+                    url: url,
+                    sizeBytes: sizeBefore,
+                    source: source,
+                    success: false
+                ))
             }
         }
 
