@@ -2,6 +2,57 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，版本号采用 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.7.0] — 2026-05-26
+
+实用功能扩展：用户终于能控制扫描什么、看到时间维度的变化、自定义清理规则、被提醒重新扫描。
+
+### 新增
+
+**排除路径**
+
+- 设置 ▸ 扫描 tab 新增排除目录列表，用 NSOpenPanel 添加。
+- DiskMapView 子项右键菜单加「加入排除列表」一键添加。
+- `DiskScanner.scan(...)` 增加 `excludedPaths` 参数；扫描时直接跳过匹配的子项，子目录也不进入。
+- DiskMap 与重复文件页都接入此设置。
+
+**自定义清理规则**
+
+- 设置 ▸ 规则 tab 提供 CRUD：增 / 改（含 sheet 编辑器）/ 删；含「浏览…」按钮选路径。
+- `CustomJunkRule` 模型 + `CustomRulesStore` actor，JSON 存到 `~/Library/Application Support/DiskCleaner/custom-rules.json`。
+- `JunkCategory` 新增 `.custom` 分类；垃圾清理结果里和内置规则混合显示。
+
+**扫描历史**
+
+- 新功能页「扫描历史」（侧边栏第 5 项，`Cmd+5`）：
+  - Swift Charts 趋势线（按根路径分组）
+  - 快照列表：时间 / 根路径 / 大小 / 项数
+  - 刷新与清空
+- `ScanSnapshot` + `ScanHistoryStore`，JSONL 存到 `scan-history.jsonl`。
+- 磁盘可视化扫描完成后自动记录快照。
+
+**定时扫描提醒**
+
+- 设置 ▸ 提醒 tab：开关 + 频率（每天 / 每周 / 每月）。
+- `ScanReminder` 使用 `NSBackgroundActivityScheduler` 周期检查，超阈值通过 `UNUserNotificationCenter` 发系统通知。
+- App 启动时自动注册当前设置。
+
+**其他**
+
+- `Feature` 新增 `.history` 项；侧边栏现在有 6 个功能页，主菜单「功能」加上 `Cmd+5`（历史）/ `Cmd+6`（最近操作）。
+- `FileNode` 新增 `totalItemCount` 计算属性。
+- `Localizable.xcstrings` 加约 30 条新条目（138 总）。
+
+### 测试
+
+- 新增 `CustomRulesStoreTests`（4 项）：保存 / 加载 / upsert / 删除 / asJunkRule 映射。
+- 新增 `ScanHistoryStoreTests`（3 项）：记录与读取 / 时序排列 / 清空。
+
+### 已知限制
+
+- 定时扫描提醒需要 app 处于运行状态（哪怕在后台）。完全退出后不会触发——这一限制要靠 LaunchAgent 解决，留到 v1.0 与代码签名一并处理。
+- 自定义规则当前只支持单条 path；要支持多 path / 通配符增强留待后续。
+- 扫描历史的 chart 在数据点很多时性能未优化（Swift Charts 默认行为应该足够）。
+
 ## [0.6.1] — 2026-05-26
 
 ### 改进

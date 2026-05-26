@@ -99,12 +99,20 @@ public struct DiskScanner: Sendable {
     ]
 
     /// Scans the directory tree rooted at `url` and returns the result.
+    ///
+    /// - Parameters:
+    ///   - url: Root directory (or file) to scan.
+    ///   - excludedPaths: Standardised absolute paths to skip entirely.
+    ///                    A matching directory is not entered; a matching
+    ///                    file is not counted.
+    ///   - onProgress: Optional callback invoked at ~10 Hz with progress.
     public func scan(
         root url: URL,
+        excludedPaths: Set<String> = [],
         onProgress: (@Sendable (ScanProgress) -> Void)? = nil
     ) async throws -> ScanResult {
         let standardized = url.standardizedFileURL
-        let accumulator = ScanAccumulator()
+        let accumulator = ScanAccumulator(excludedPaths: excludedPaths)
 
         let progressTask: Task<Void, Never>?
         if let onProgress {
@@ -225,15 +233,21 @@ public struct DiskScanner: Sendable {
     }
 
     /// Lists the immediate children of `url`, preferring the bulk-enumeration
-    /// fast path and falling back to FileManager on any failure.
+    /// fast path and falling back to FileManager on any failure. Entries
+    /// whose path is in the accumulator's excluded set are dropped.
     private static func listChildEntries(
         of url: URL,
         accumulator: ScanAccumulator
     ) async -> [ChildEntry] {
+        let entries: [ChildEntry]
         if let bulk = bulkListChildren(of: url) {
-            return bulk
+            entries = bulk
+        } else {
+            entries = await fallbackListChildren(of: url, accumulator: accumulator)
         }
-        return await fallbackListChildren(of: url, accumulator: accumulator)
+        let excluded = accumulator.excludedPaths
+        guard !excluded.isEmpty else { return entries }
+        return entries.filter { !excluded.contains($0.url.standardizedFileURL.path) }
     }
 
     /// Fast path: enumerate via `getattrlistbulk`. Returns nil if the bridge

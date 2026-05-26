@@ -86,8 +86,13 @@ final class DuplicatesViewModel {
                     self?.scanProgress = progress
                 }
             }
+            let excludedPaths = AppSettings.excludedPaths()
             do {
-                let scanResult = try await DiskScanner().scan(root: url, onProgress: progressHandler)
+                let scanResult = try await DiskScanner().scan(
+                    root: url,
+                    excludedPaths: excludedPaths,
+                    onProgress: progressHandler
+                )
                 if Task.isCancelled { return }
 
                 self?.scanProgress = nil
@@ -103,6 +108,7 @@ final class DuplicatesViewModel {
                 if Task.isCancelled { return }
                 self.duplicateGroups = groups
                 self.hasScanned = true
+                AppSettings.markScanCompleted()
 
                 if scanResult.blockedDirectoryCount > 0 && !self.permissionsChecker.hasFullDiskAccess() {
                     self.permissionWarning = "扫描中有 \(scanResult.blockedDirectoryCount) 个目录因权限受阻。授予完全磁盘访问后重新分析，结果会更完整。"

@@ -83,8 +83,13 @@ final class DiskMapViewModel {
                     self?.scanProgress = progress
                 }
             }
+            let excludedPaths = AppSettings.excludedPaths()
             do {
-                let result = try await DiskScanner().scan(root: url, onProgress: progressHandler)
+                let result = try await DiskScanner().scan(
+                    root: url,
+                    excludedPaths: excludedPaths,
+                    onProgress: progressHandler
+                )
                 if Task.isCancelled { return }
                 guard let self else { return }
                 self.tree = result.root
@@ -92,6 +97,7 @@ final class DiskMapViewModel {
                 if result.blockedDirectoryCount > 0 && !self.permissionsChecker.hasFullDiskAccess() {
                     self.permissionWarning = "扫描中有 \(result.blockedDirectoryCount) 个目录因权限受阻。授予完全磁盘访问后重新扫描，结果会更完整。"
                 }
+                await Self.recordSnapshot(rootURL: url, tree: result.root)
             } catch is CancellationError {
                 // Superseded by a newer scan — ignore.
             } catch {
@@ -99,6 +105,24 @@ final class DiskMapViewModel {
             }
             self?.isScanning = false
         }
+    }
+
+    /// Adds `path` to the global exclude list and re-scans so the result no
+    /// longer includes it.
+    func excludePath(_ path: String) {
+        AppSettings.addExcludedPath(path)
+        rescan()
+    }
+
+    private static func recordSnapshot(rootURL: URL, tree: FileNode) async {
+        let snapshot = ScanSnapshot(
+            timestamp: Date(),
+            rootPath: rootURL.path,
+            totalAllocatedBytes: tree.allocatedSize,
+            itemCount: tree.totalItemCount
+        )
+        await ScanHistoryStore.shared.record(snapshot)
+        AppSettings.markScanCompleted()
     }
 
     func drill(into node: FileNode) {
@@ -302,6 +326,7 @@ struct DiskMapView: View {
                 if child.isDirectory && !child.children.isEmpty {
                     Button("进入此文件夹") { model.drill(into: child) }
                 }
+                Button("加入排除列表") { model.excludePath(child.url.path) }
                 Divider()
                 Button("移到废纸篓", role: .destructive) { model.moveToTrash(child) }
             }

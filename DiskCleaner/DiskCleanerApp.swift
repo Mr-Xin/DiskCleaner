@@ -14,6 +14,11 @@ struct DiskCleanerApp: App {
 
     @State private var selection: Feature? = .visualization
 
+    init() {
+        // Register the periodic scan-reminder activity (no-op if disabled).
+        ScanReminder.shared.applyCurrentSettings()
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView(selection: $selection)
@@ -30,9 +35,11 @@ struct DiskCleanerApp: App {
                     .keyboardShortcut("3")
                 Button("应用卸载") { selection = .uninstall }
                     .keyboardShortcut("4")
+                Button("扫描历史") { selection = .history }
+                    .keyboardShortcut("5")
                 Divider()
                 Button("最近操作") { selection = .audit }
-                    .keyboardShortcut("5")
+                    .keyboardShortcut("6")
             }
         }
 

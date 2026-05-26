@@ -21,6 +21,7 @@ enum Feature: String, CaseIterable, Identifiable {
     case junk
     case duplicates
     case uninstall
+    case history
     case audit
 
     var id: String { rawValue }
@@ -31,6 +32,7 @@ enum Feature: String, CaseIterable, Identifiable {
         case .junk:          "垃圾清理"
         case .duplicates:    "大文件 / 重复文件"
         case .uninstall:     "应用卸载"
+        case .history:       "扫描历史"
         case .audit:         "最近操作"
         }
     }
@@ -41,6 +43,7 @@ enum Feature: String, CaseIterable, Identifiable {
         case .junk:          "trash"
         case .duplicates:    "doc.on.doc"
         case .uninstall:     "xmark.bin"
+        case .history:       "chart.line.uptrend.xyaxis"
         case .audit:         "clock.arrow.circlepath"
         }
     }
@@ -106,6 +109,7 @@ struct ContentView: View {
         case .junk:          JunkCleaningView()
         case .duplicates:    DuplicatesView()
         case .uninstall:     UninstallView()
+        case .history:       HistoryView()
         case .audit:         AuditLogView()
         }
     }

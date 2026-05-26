@@ -22,6 +22,7 @@ public enum JunkCategory: String, Sendable, CaseIterable {
     case mailDownloads
     case systemCache
     case largeOldDownloads
+    case custom
 }
 
 /// A declarative description of one kind of cleanable junk.

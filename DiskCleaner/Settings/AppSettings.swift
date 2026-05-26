@@ -54,15 +54,44 @@ extension AppLanguage {
     }
 }
 
+/// How often the scan reminder fires.
+enum ReminderFrequency: String, CaseIterable, Identifiable {
+    case daily
+    case weekly
+    case monthly
+
+    var id: String { rawValue }
+
+    var days: Int {
+        switch self {
+        case .daily:   1
+        case .weekly:  7
+        case .monthly: 30
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .daily:   "每天"
+        case .weekly:  "每周"
+        case .monthly: "每月"
+        }
+    }
+}
+
 enum AppSettings {
 
     // MARK: Keys
 
-    static let defaultScanRootKey       = "defaultScanRoot"
-    static let largeFileThresholdMBKey  = "largeFileThresholdMB"
-    static let auditLogMaxEntriesKey    = "auditLogMaxEntries"
-    static let lastScannedPathKey       = "lastScannedPath"
-    static let appLanguageKey           = "appLanguage"
+    static let defaultScanRootKey         = "defaultScanRoot"
+    static let largeFileThresholdMBKey    = "largeFileThresholdMB"
+    static let auditLogMaxEntriesKey      = "auditLogMaxEntries"
+    static let lastScannedPathKey         = "lastScannedPath"
+    static let appLanguageKey             = "appLanguage"
+    static let excludedPathsKey           = "excludedPaths"
+    static let reminderEnabledKey         = "scanReminderEnabled"
+    static let reminderFrequencyKey       = "scanReminderFrequency"
+    static let lastScanTimeKey            = "lastScanTime"
 
     // MARK: Defaults
 
@@ -70,6 +99,7 @@ enum AppSettings {
     static let largeFileThresholdMBDefault: Int        = 100
     static let auditLogMaxEntriesDefault: Int          = 500
     static let appLanguageDefault: AppLanguage         = .system
+    static let reminderFrequencyDefault: ReminderFrequency = .weekly
 
     // MARK: Read helpers (for non-View code that can't use @AppStorage)
 
@@ -101,5 +131,64 @@ enum AppSettings {
             return value
         }
         return appLanguageDefault
+    }
+
+    /// Paths the scanner should skip entirely. Standardised so comparisons
+    /// against `URL.standardizedFileURL.path` succeed regardless of trailing
+    /// slashes or relative segments.
+    static func excludedPaths() -> Set<String> {
+        let stored = UserDefaults.standard.stringArray(forKey: excludedPathsKey) ?? []
+        return Set(stored.map { standardize($0) })
+    }
+
+    static func setExcludedPaths(_ paths: [String]) {
+        let standardized = paths.map { standardize($0) }
+        UserDefaults.standard.set(standardized, forKey: excludedPathsKey)
+    }
+
+    static func addExcludedPath(_ path: String) {
+        var current = UserDefaults.standard.stringArray(forKey: excludedPathsKey) ?? []
+        let normalized = standardize(path)
+        if !current.contains(normalized) {
+            current.append(normalized)
+            UserDefaults.standard.set(current, forKey: excludedPathsKey)
+        }
+    }
+
+    static func removeExcludedPath(_ path: String) {
+        var current = UserDefaults.standard.stringArray(forKey: excludedPathsKey) ?? []
+        let normalized = standardize(path)
+        current.removeAll { $0 == normalized }
+        UserDefaults.standard.set(current, forKey: excludedPathsKey)
+    }
+
+    static func reminderEnabled() -> Bool {
+        UserDefaults.standard.bool(forKey: reminderEnabledKey)
+    }
+
+    static func reminderFrequency() -> ReminderFrequency {
+        if
+            let raw = UserDefaults.standard.string(forKey: reminderFrequencyKey),
+            let value = ReminderFrequency(rawValue: raw)
+        {
+            return value
+        }
+        return reminderFrequencyDefault
+    }
+
+    static func lastScanTime() -> Date? {
+        let interval = UserDefaults.standard.double(forKey: lastScanTimeKey)
+        guard interval > 0 else { return nil }
+        return Date(timeIntervalSince1970: interval)
+    }
+
+    static func markScanCompleted() {
+        UserDefaults.standard.set(Date().timeIntervalSince1970, forKey: lastScanTimeKey)
+    }
+
+    // MARK: Helpers
+
+    private static func standardize(_ path: String) -> String {
+        URL(fileURLWithPath: path).standardizedFileURL.path
     }
 }

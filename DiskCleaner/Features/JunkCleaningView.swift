@@ -58,8 +58,11 @@ final class JunkCleaningViewModel {
                     self?.scanProgress = progress
                 }
             }
+            let customRules = await CustomRulesStore.shared.load()
+            let allRules = JunkRuleCatalog.builtIn + customRules.map { $0.asJunkRule() }
+            let engine = JunkRulesEngine(rules: allRules)
             do {
-                let found = try await JunkRulesEngine().scan(onProgress: progressHandler)
+                let found = try await engine.scan(onProgress: progressHandler)
                 self?.items = found
                 self?.selectedIDs = Set(found.filter { $0.rule.safety == .safe }.map { $0.id })
                 self?.hasScanned = true
@@ -286,6 +289,7 @@ struct JunkCleaningView: View {
         case .mailDownloads:       "邮件下载"
         case .systemCache:         "系统缓存"
         case .largeOldDownloads:   "旧下载文件"
+        case .custom:              "自定义"
         }
     }
 }

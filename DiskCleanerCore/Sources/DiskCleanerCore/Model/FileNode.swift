@@ -83,6 +83,11 @@ extension FileNode {
         return children.flatMap { $0.allFiles() }
     }
 
+    /// Total number of items in the subtree (this node plus every descendant).
+    public var totalItemCount: Int {
+        1 + children.reduce(0) { $0 + $1.totalItemCount }
+    }
+
     /// The chain of nodes from the root down to (and including) this node.
     public var pathFromRoot: [FileNode] {
         var chain: [FileNode] = []
