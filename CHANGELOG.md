@@ -2,6 +2,30 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，版本号采用 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.6.0] — 2026-05-26
+
+侧边栏左下角加 Claude 风格的快捷菜单。
+
+### 新增
+
+- **侧边栏底部固定一个按钮**，点击弹出菜单：
+  - **设置**（`Cmd+,`，通过 SwiftUI 原生 `SettingsLink` 打开 Settings 场景）
+  - **语言 ▸** 二级菜单：跟随系统 / 简体中文 / English（当前选中带 ✓）
+  - **关于 DiskCleaner**（macOS 标准 About 面板，显示版本与版权）
+- 侧边栏里切换语言后，弹出与 Settings 里一致的「语言已更改」对话框，可立即重启或稍后。
+
+### 改进
+
+- 切换语言不再需要打开 Settings——侧边栏两步搞定。
+- `Localizable.xcstrings` 补「设置」「关于 DiskCleaner」的英文翻译。
+
+### 实现要点
+
+- SwiftUI `Menu` + 嵌套 `Menu` 实现一二级菜单。
+- 用 `SettingsLink`（macOS 14+ 原生 API）作为打开 Settings 的入口，免去手写 `@Environment(\.openSettings)` 调用。
+- `.menuIndicator(.hidden)` 隐藏 Menu 自带的小箭头，因为按钮 label 自己带了上下箭头图标。
+- About 面板用 `NSApplication.orderFrontStandardAboutPanel(nil)`，自动读取 Bundle 的版本与版权（v0.3 设的 `NSHumanReadableCopyright` 终于派上用场）。
+
 ## [0.5.0] — 2026-05-26
 
 App 内语言切换：不用改系统语言，直接在设置里选。
