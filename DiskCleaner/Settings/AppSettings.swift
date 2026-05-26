@@ -26,6 +26,34 @@ enum DefaultScanRoot: String, CaseIterable, Identifiable {
     }
 }
 
+/// The language the user chose for the app's UI. Backed by macOS's standard
+/// `AppleLanguages` defaults key — the override takes effect on the next
+/// launch of the app.
+enum AppLanguage: String, CaseIterable, Identifiable {
+    case system
+    case chinese
+    case english
+
+    var id: String { rawValue }
+}
+
+extension AppLanguage {
+
+    /// Applies this choice to UserDefaults. macOS picks up the new
+    /// `AppleLanguages` value on the next launch of the app.
+    func apply() {
+        let defaults = UserDefaults.standard
+        switch self {
+        case .system:
+            defaults.removeObject(forKey: "AppleLanguages")
+        case .chinese:
+            defaults.set(["zh-Hans"], forKey: "AppleLanguages")
+        case .english:
+            defaults.set(["en"], forKey: "AppleLanguages")
+        }
+    }
+}
+
 enum AppSettings {
 
     // MARK: Keys
@@ -34,12 +62,14 @@ enum AppSettings {
     static let largeFileThresholdMBKey  = "largeFileThresholdMB"
     static let auditLogMaxEntriesKey    = "auditLogMaxEntries"
     static let lastScannedPathKey       = "lastScannedPath"
+    static let appLanguageKey           = "appLanguage"
 
     // MARK: Defaults
 
     static let defaultScanRootDefault: DefaultScanRoot = .home
     static let largeFileThresholdMBDefault: Int        = 100
     static let auditLogMaxEntriesDefault: Int          = 500
+    static let appLanguageDefault: AppLanguage         = .system
 
     // MARK: Read helpers (for non-View code that can't use @AppStorage)
 
@@ -61,5 +91,15 @@ enum AppSettings {
     static func auditLogMaxEntries() -> Int {
         let stored = UserDefaults.standard.integer(forKey: auditLogMaxEntriesKey)
         return stored > 0 ? stored : auditLogMaxEntriesDefault
+    }
+
+    static func appLanguage() -> AppLanguage {
+        if
+            let raw = UserDefaults.standard.string(forKey: appLanguageKey),
+            let value = AppLanguage(rawValue: raw)
+        {
+            return value
+        }
+        return appLanguageDefault
     }
 }

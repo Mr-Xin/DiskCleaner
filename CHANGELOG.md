@@ -2,6 +2,26 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，版本号采用 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.5.0] — 2026-05-26
+
+App 内语言切换：不用改系统语言，直接在设置里选。
+
+### 新增
+
+- **App 内语言选择器**：设置 ▸ 常规 ▸ 语言。可选「跟随系统」「简体中文」「English」。
+- 切换后通过覆写 `UserDefaults` 的 `AppleLanguages` 键生效，弹出「语言已更改」对话框，可选立即重启或稍后。
+- 「立即重启」会用 `open -n` 启动应用新实例并退出当前实例，新语言下次启动即生效。
+
+### 改进
+
+- `Localizable.xcstrings` 新增 6 条与语言选择器相关的字符串（"语言"、"跟随系统"、"语言已更改"、"立即重启"、"稍后"、重启提示文案）。总条目从 80 增至 86。
+- 语言名称（"简体中文"、"English"）使用 `Text(verbatim:)` 显式跳过本地化——每种语言始终以自己的名字显示。
+
+### 实现细节
+
+- macOS 标准做法：app 设置 `AppleLanguages` 数组 → 下次启动时 `CFBundle` 与 `CFLocale` 自动使用该语言。无需自定义 bundle 查找逻辑。
+- 选「跟随系统」时清空 `AppleLanguages`，让 macOS 回到系统语言。
+
 ## [0.4.0] — 2026-05-26
 
 性能与国际化收尾：扫描底层换 `getattrlistbulk`，重复文件并行哈希，应用卸载顺手卸 LaunchAgent，关键字符串中英双语。
