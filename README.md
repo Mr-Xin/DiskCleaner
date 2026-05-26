@@ -2,7 +2,7 @@
 
 一款面向 macOS 的磁盘管理与清理工具：看清磁盘空间被什么占用、安全地回收无用空间、干净地卸载应用。
 
-> **项目状态：v0.3 — UI/UX 打磨：应用图标、设置面板（Cmd+,）、键盘快捷键、更友好的错误提示。** 后续会推进本地化与 `getattrlistbulk` 提速（v0.4），代码签名与正式发布（v1.0）。更新见 [`CHANGELOG.md`](CHANGELOG.md)。
+> **项目状态：v0.4 — 性能与国际化收尾：`getattrlistbulk` 提速扫描、并行哈希、卸载顺手 launchctl unload、关键字符串中英双语。** 后续推进完整本地化（v0.5），代码签名与正式发布（v1.0）。更新见 [`CHANGELOG.md`](CHANGELOG.md)。
 
 ## 功能
 

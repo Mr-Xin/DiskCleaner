@@ -1,0 +1,886 @@
+{
+  "sourceLanguage": "zh-Hans",
+  "strings": {
+    "DiskCleaner": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DiskCleaner"
+          }
+        }
+      }
+    },
+    "磁盘空间可视化": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Disk Visualization"
+          }
+        }
+      }
+    },
+    "垃圾清理": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Junk Cleaning"
+          }
+        }
+      }
+    },
+    "大文件 / 重复文件": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Large Files / Duplicates"
+          }
+        }
+      }
+    },
+    "应用卸载": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uninstall Apps"
+          }
+        }
+      }
+    },
+    "最近操作": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Recent Activity"
+          }
+        }
+      }
+    },
+    "功能": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Features"
+          }
+        }
+      }
+    },
+    "扫描": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan"
+          }
+        }
+      }
+    },
+    "扫描垃圾": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan for Junk"
+          }
+        }
+      }
+    },
+    "扫描默认位置": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan Default Location"
+          }
+        }
+      }
+    },
+    "扫描主目录": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan Home"
+          }
+        }
+      }
+    },
+    "选择文件夹": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose Folder"
+          }
+        }
+      }
+    },
+    "上一级": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Up"
+          }
+        }
+      }
+    },
+    "取消": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cancel"
+          }
+        }
+      }
+    },
+    "重试": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Retry"
+          }
+        }
+      }
+    },
+    "刷新": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Refresh"
+          }
+        }
+      }
+    },
+    "清理所选": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clean Selected"
+          }
+        }
+      }
+    },
+    "卸载并清理": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uninstall and Clean"
+          }
+        }
+      }
+    },
+    "移到废纸篓": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Move to Trash"
+          }
+        }
+      }
+    },
+    "在访达中显示": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show in Finder"
+          }
+        }
+      }
+    },
+    "进入此文件夹": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter Folder"
+          }
+        }
+      }
+    },
+    "去授权": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grant Access"
+          }
+        }
+      }
+    },
+    "打开系统设置": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Open System Settings"
+          }
+        }
+      }
+    },
+    "重新检查": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Re-check"
+          }
+        }
+      }
+    },
+    "开始使用": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get Started"
+          }
+        }
+      }
+    },
+    "暂时跳过（部分功能受限）": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skip for now (some features limited)"
+          }
+        }
+      }
+    },
+    "清空": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear"
+          }
+        }
+      }
+    },
+    "在访达中显示日志": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show Log in Finder"
+          }
+        }
+      }
+    },
+    "分析": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Analyze"
+          }
+        }
+      }
+    },
+    "选择要扫描的文件夹": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a folder to scan"
+          }
+        }
+      }
+    },
+    "选择要分析的文件夹": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a folder to analyze"
+          }
+        }
+      }
+    },
+    "已安装应用": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installed Apps"
+          }
+        }
+      }
+    },
+    "高匹配度(建议清理)": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "High Confidence (Suggested)"
+          }
+        }
+      }
+    },
+    "低匹配度(请确认)": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Low Confidence (Review)"
+          }
+        }
+      }
+    },
+    "高匹配度（建议清理）": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "High Confidence (Suggested)"
+          }
+        }
+      }
+    },
+    "低匹配度（请确认）": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Low Confidence (Review)"
+          }
+        }
+      }
+    },
+    "大文件": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Large Files"
+          }
+        }
+      }
+    },
+    "重复文件": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Duplicates"
+          }
+        }
+      }
+    },
+    "需确认": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Review"
+          }
+        }
+      }
+    },
+    "常规": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "General"
+          }
+        }
+      }
+    },
+    "检测": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Detection"
+          }
+        }
+      }
+    },
+    "默认扫描位置": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Default Scan Location"
+          }
+        }
+      }
+    },
+    "主目录": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Home Directory"
+          }
+        }
+      }
+    },
+    "上次使用的位置": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Last Used Location"
+          }
+        }
+      }
+    },
+    "每次询问": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ask Every Time"
+          }
+        }
+      }
+    },
+    "用户缓存": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "User Caches"
+          }
+        }
+      }
+    },
+    "日志": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Logs"
+          }
+        }
+      }
+    },
+    "废纸篓": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Trash"
+          }
+        }
+      }
+    },
+    "浏览器缓存": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Browser Caches"
+          }
+        }
+      }
+    },
+    "开发者垃圾": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Developer Junk"
+          }
+        }
+      }
+    },
+    "包管理器缓存": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Package Manager Caches"
+          }
+        }
+      }
+    },
+    "设备备份": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Device Backups"
+          }
+        }
+      }
+    },
+    "邮件下载": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mail Downloads"
+          }
+        }
+      }
+    },
+    "系统缓存": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "System Caches"
+          }
+        }
+      }
+    },
+    "旧下载文件": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Old Downloads"
+          }
+        }
+      }
+    },
+    "选择一个应用": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select an App"
+          }
+        }
+      }
+    },
+    "选择一个功能": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select a Feature"
+          }
+        }
+      }
+    },
+    "还没有扫描结果": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No scan results yet"
+          }
+        }
+      }
+    },
+    "还没有操作记录": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No activity yet"
+          }
+        }
+      }
+    },
+    "没有发现可清理的垃圾": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No junk found"
+          }
+        }
+      }
+    },
+    "没有发现大文件": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No large files found"
+          }
+        }
+      }
+    },
+    "没有发现重复文件": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No duplicates found"
+          }
+        }
+      }
+    },
+    "这个文件夹是空的": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This folder is empty"
+          }
+        }
+      }
+    },
+    "扫描失败": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scan failed"
+          }
+        }
+      }
+    },
+    "分析失败": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Analysis failed"
+          }
+        }
+      }
+    },
+    "没有找到明显的关联文件。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No obvious associated files found."
+          }
+        }
+      }
+    },
+    "需要完全磁盘访问": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Full Disk Access Required"
+          }
+        }
+      }
+    },
+    "已获得完全磁盘访问": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Full Disk Access Granted"
+          }
+        }
+      }
+    },
+    "DiskCleaner 现在可以扫描磁盘上的文件了。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DiskCleaner can now scan files on your disk."
+          }
+        }
+      }
+    },
+    "DiskCleaner 需要完全磁盘访问，才能扫描系统各处的缓存、日志和大文件。这项权限只能由你在系统设置中手动授予。": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "DiskCleaner needs Full Disk Access to scan caches, logs, and large files across the system. This permission can only be granted manually in System Settings."
+          }
+        }
+      }
+    },
+    "点击下方「打开系统设置」": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Click \"Open System Settings\" below"
+          }
+        }
+      }
+    },
+    "在列表中找到 DiskCleaner，打开它的开关": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Find DiskCleaner in the list and turn its switch on"
+          }
+        }
+      }
+    },
+    "回到本窗口，点击「重新检查」": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Come back to this window and click \"Re-check\""
+          }
+        }
+      }
+    },
+    "正在扫描…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanning…"
+          }
+        }
+      }
+    },
+    "正在扫描垃圾文件…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanning for junk…"
+          }
+        }
+      }
+    },
+    "正在移到废纸篓…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Moving to Trash…"
+          }
+        }
+      }
+    },
+    "正在分析文件…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Analyzing files…"
+          }
+        }
+      }
+    },
+    "正在扫描文件树…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Scanning file tree…"
+          }
+        }
+      }
+    },
+    "正在查找大文件与重复文件…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Searching for large and duplicate files…"
+          }
+        }
+      }
+    },
+    "查找关联文件…": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Searching for associated files…"
+          }
+        }
+      }
+    }
+  },
+  "version": "1.0"
+}

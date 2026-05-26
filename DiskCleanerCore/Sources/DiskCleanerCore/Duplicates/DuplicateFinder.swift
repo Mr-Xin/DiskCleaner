@@ -26,6 +26,10 @@ public struct DuplicateGroup: Identifiable, Sendable {
 /// Finds duplicate files via a three-stage pipeline:
 /// 1. group by size, 2. partial hash, 3. full hash.
 ///
+/// The hashing stages run in parallel via `TaskGroup` — at any moment as many
+/// files as the cooperative thread pool allows are being hashed at once. This
+/// is a significant speed-up when many same-size files need a full hash.
+///
 /// Files that share physical storage on disk are excluded — deleting them
 /// frees no space. This covers both POSIX hard links (same inode) and APFS
 /// clones (different inode but shared extents, detected via clone identifier).
@@ -48,14 +52,14 @@ public struct DuplicateFinder: Sendable {
 
         var groups: [DuplicateGroup] = []
         for (size, sameSize) in bySize where sameSize.count > 1 {
-            // Stage 2 — partial (head + tail) hash.
-            let byPartial = try await bucketed(sameSize) {
-                try await hashService.partialHash(of: $0)
+            // Stage 2 — partial (head + tail) hash, in parallel.
+            let byPartial = try await bucketed(sameSize) { [hashService] url in
+                try await hashService.partialHash(of: url)
             }
             for partialBucket in byPartial where partialBucket.count > 1 {
-                // Stage 3 — full content hash.
-                let byFull = try await bucketed(partialBucket) {
-                    try await hashService.fullHash(of: $0)
+                // Stage 3 — full content hash, in parallel.
+                let byFull = try await bucketed(partialBucket) { [hashService] url in
+                    try await hashService.fullHash(of: url)
                 }
                 for fullBucket in byFull where fullBucket.count > 1 {
                     let unique = withoutSharedStorage(fullBucket)
@@ -68,15 +72,33 @@ public struct DuplicateFinder: Sendable {
         return groups.sorted { $0.reclaimableBytes > $1.reclaimableBytes }
     }
 
-    /// Groups `urls` into buckets keyed by the value of `hash`.
+    /// Groups `urls` into buckets keyed by the value of `hash`, running the
+    /// hash operations concurrently.
     private func bucketed(
         _ urls: [URL],
-        using hash: (URL) async throws -> String
+        using hash: @escaping @Sendable (URL) async throws -> String
     ) async throws -> [[URL]] {
+        let pairs = try await withThrowingTaskGroup(
+            of: (URL, String?).self
+        ) { group -> [(URL, String)] in
+            for url in urls {
+                group.addTask {
+                    let key = try? await hash(url)
+                    return (url, key)
+                }
+            }
+            var collected: [(URL, String)] = []
+            for try await result in group {
+                try Task.checkCancellation()
+                if let key = result.1 {
+                    collected.append((result.0, key))
+                }
+            }
+            return collected
+        }
+
         var buckets: [String: [URL]] = [:]
-        for url in urls {
-            try Task.checkCancellation()
-            guard let key = try? await hash(url) else { continue }
+        for (url, key) in pairs {
             buckets[key, default: []].append(url)
         }
         return Array(buckets.values)

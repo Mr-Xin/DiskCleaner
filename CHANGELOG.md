@@ -2,6 +2,32 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，版本号采用 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.4.0] — 2026-05-26
+
+性能与国际化收尾：扫描底层换 `getattrlistbulk`，重复文件并行哈希，应用卸载顺手卸 LaunchAgent，关键字符串中英双语。
+
+### 性能
+
+- **`getattrlistbulk` 全面接入** — C 桥新增 `dc_bulk_open` / `dc_bulk_next` / `dc_bulk_close`，单次系统调用拿到目录里所有子项的名字、对象类型、逻辑大小、分配大小、APFS clone id。`DiskScanner` 默认走 bulk 快路径，遇到错误自动回退 `FileManager`。大目录扫描显著提速。
+- **`DuplicateFinder` 哈希并行化** — `bucketed(_:using:)` 改用 `TaskGroup`，同尺寸文件桶里的局部 / 完整哈希现在并发跑（Swift 协作线程池自然限流到 CPU 核心数）。
+
+### 改进
+
+- **应用卸载顺带 `launchctl unload`** — `AppUninstaller` 新增 `unloadLaunchServices(among:)`：识别残留里 `~/Library/LaunchAgents/*.plist` 与 `/Library/LaunchDaemons/*.plist`，删 plist 前先调 `launchctl unload`，避免卸完应用还有僵尸服务在跑。`UninstallViewModel.uninstall()` 自动调用。
+- **关键字符串中英双语** — 新增 `Localizable.xcstrings`，覆盖五个功能名 / 高频按钮 / 段落标题 / 设置项 / 垃圾分类 / 空状态 / FDA 引导（约 80 条）。`developmentRegion` 改成 `zh-Hans`，中文系统继续用中文，英文系统切到英文翻译。详细的状态文案 / 错误细节 / 规则描述本轮未翻，留后续补全。
+
+### 测试
+
+- 新增 `BulkEnumerationTests`：跑 `dc_bulk_open` + `dc_bulk_next` 解析已知目录，验证 C 缓冲区布局解析正确（这是 v0.4 最容易翻车的地方，单测专门覆盖）。
+- 新增 `AppUninstallerTests`：验证 LaunchAgent / Daemon plist 的路径判别。
+- 既有 `DiskScannerTests` 现在隐式覆盖 bulk 路径（temp 目录在 APFS 卷上时会走 bulk）。
+
+### 已知限制 / 待办
+
+- 详细文案与规则说明的本地化（v0.5）。
+- `DuplicateFinder` 并行哈希没有上限——对极大同尺寸桶可能过度并发，留 v0.5 加 maxConcurrent 控制。
+- 代码签名 / 公证 / 打包（v1.0）。
+
 ## [0.3.0] — 2026-05-26
 
 UI/UX 打磨：应用图标、设置面板、键盘快捷键、更友好的错误提示。

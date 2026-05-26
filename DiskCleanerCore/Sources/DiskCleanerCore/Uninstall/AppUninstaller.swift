@@ -144,3 +144,43 @@ public struct AppUninstaller: Sendable {
         return results.sorted { $0.size > $1.size }
     }
 }
+
+// MARK: - LaunchAgent / Daemon Unloading
+
+extension AppUninstaller {
+
+    /// Unloads launchd services for any LaunchAgents / LaunchDaemons among
+    /// the given URLs, so the plist files can subsequently be removed without
+    /// leaving orphan processes running.
+    ///
+    /// Best-effort: individual `launchctl` failures are silently ignored — the
+    /// worst case is leaving a stale service running, which the user will
+    /// notice and can handle manually.
+    public func unloadLaunchServices(among urls: [URL]) {
+        for url in urls where Self.isLaunchService(url) {
+            Self.unloadLaunchService(at: url)
+        }
+    }
+
+    /// Whether `url` looks like a launchd service definition (a `.plist` file
+    /// living in one of the standard LaunchAgents / LaunchDaemons directories).
+    static func isLaunchService(_ url: URL) -> Bool {
+        guard url.pathExtension == "plist" else { return false }
+        let path = url.path
+        return path.contains("/Library/LaunchAgents/")
+            || path.contains("/Library/LaunchDaemons/")
+    }
+
+    /// Runs `launchctl unload <path>` and waits for it to exit.
+    private static func unloadLaunchService(at url: URL) {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/launchctl")
+        process.arguments = ["unload", url.path]
+        do {
+            try process.run()
+            process.waitUntilExit()
+        } catch {
+            // best effort — ignore
+        }
+    }
+}

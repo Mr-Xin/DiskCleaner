@@ -1,4 +1,5 @@
 import Foundation
+import DiskCleanerCoreBridge
 
 /// Progress reported while a scan is running.
 public struct ScanProgress: Sendable {
@@ -40,18 +41,55 @@ public struct ScanResult: Sendable {
     }
 }
 
+/// Compact view of one directory child, populated either by the
+/// `getattrlistbulk` fast path or the FileManager fallback.
+struct ChildEntry: Sendable {
+    let url: URL
+    let name: String
+    let isDirectory: Bool
+    let isSymlink: Bool
+    let logicalSize: Int64
+    let allocatedSize: Int64
+
+    static func fromURL(_ url: URL) -> ChildEntry? {
+        let keys: Set<URLResourceKey> = [
+            .isDirectoryKey, .isSymbolicLinkKey, .nameKey,
+            .fileSizeKey, .totalFileAllocatedSizeKey
+        ]
+        guard let values = try? url.resourceValues(forKeys: keys) else { return nil }
+        let name = values.name ?? url.lastPathComponent
+        let isDir = values.isDirectory ?? false
+        let isSym = values.isSymbolicLink ?? false
+        let logical = Int64(values.fileSize ?? 0)
+        let allocated = Int64(values.totalFileAllocatedSize ?? values.fileSize ?? 0)
+        return ChildEntry(
+            url: url, name: name,
+            isDirectory: isDir, isSymlink: isSym,
+            logicalSize: logical, allocatedSize: allocated
+        )
+    }
+}
+
 /// Walks a directory tree and builds a sized `FileNode` tree.
 ///
-/// The top-level subtrees of the scanned root are walked in parallel via a
-/// `TaskGroup`. Within each subtree the walk is sequential. A background task
-/// samples the live progress at ~10 Hz and delivers it to `onProgress`, so
-/// callers don't have to manage their own throttling.
+/// Strategy:
+/// - Top-level subtrees of the scanned root are walked in parallel via a
+///   `TaskGroup`. Within each subtree the walk is sequential.
+/// - For each directory, child enumeration prefers the C bridge's
+///   `getattrlistbulk` fast path (single syscall, all metadata inline) and
+///   falls back to `FileManager.contentsOfDirectory` if the bulk call cannot
+///   be used. The fallback also handles directories the bulk path opened
+///   successfully but mid-enumeration errored.
+/// - A background task samples accumulated progress at ~10 Hz and delivers
+///   it to `onProgress`, so callers don't manage their own throttling.
 public struct DiskScanner: Sendable {
 
     public init() {}
 
-    /// Resource keys pre-fetched for every item, to avoid extra `stat` calls.
-    private static let resourceKeys: Set<URLResourceKey> = [
+    /// Resource keys for the root entry (needed only for the root URL — child
+    /// entries get their metadata from the bulk API or the FileManager
+    /// fallback inside `listChildEntries`).
+    private static let rootResourceKeys: Set<URLResourceKey> = [
         .isDirectoryKey,
         .isSymbolicLinkKey,
         .nameKey,
@@ -68,8 +106,6 @@ public struct DiskScanner: Sendable {
         let standardized = url.standardizedFileURL
         let accumulator = ScanAccumulator()
 
-        // Background progress task. Sampling at a fixed cadence avoids
-        // flooding the UI when scanning millions of files.
         let progressTask: Task<Void, Never>?
         if let onProgress {
             progressTask = Task {
@@ -100,14 +136,16 @@ public struct DiskScanner: Sendable {
     }
 
     /// Scans the root and parallelises across its immediate subdirectories.
-    private static func scanRoot(at url: URL, accumulator: ScanAccumulator) async throws -> FileNode {
+    private static func scanRoot(
+        at url: URL,
+        accumulator: ScanAccumulator
+    ) async throws -> FileNode {
         try Task.checkCancellation()
 
-        let values = try url.resourceValues(forKeys: resourceKeys)
+        let values = try url.resourceValues(forKeys: rootResourceKeys)
         let isDirectory = values.isDirectory ?? false
         let isSymlink = values.isSymbolicLink ?? false
         let name = values.name ?? url.lastPathComponent
-
         await accumulator.recordItem(at: url.path)
 
         guard isDirectory && !isSymlink else {
@@ -130,12 +168,12 @@ public struct DiskScanner: Sendable {
             isDirectory: true,
             modificationDate: values.contentModificationDate
         )
-        let children = await listChildren(of: url, accumulator: accumulator)
+        let children = await listChildEntries(of: url, accumulator: accumulator)
 
         try await withThrowingTaskGroup(of: FileNode.self) { group in
             for child in children {
                 group.addTask {
-                    try await scanSubtree(at: child, accumulator: accumulator)
+                    try await scanSubtree(child, accumulator: accumulator)
                 }
             }
             for try await childNode in group {
@@ -145,46 +183,39 @@ public struct DiskScanner: Sendable {
                 rootNode.allocatedSize += childNode.allocatedSize
             }
         }
-
         return rootNode
     }
 
     /// Recursively scans a subtree. Sequential within itself; the parallelism
     /// comes from `scanRoot` running many of these concurrently.
-    private static func scanSubtree(at url: URL, accumulator: ScanAccumulator) async throws -> FileNode {
+    private static func scanSubtree(
+        _ entry: ChildEntry,
+        accumulator: ScanAccumulator
+    ) async throws -> FileNode {
         try Task.checkCancellation()
+        await accumulator.recordItem(at: entry.url.path)
 
-        let values = try url.resourceValues(forKeys: resourceKeys)
-        let isDirectory = values.isDirectory ?? false
-        let isSymlink = values.isSymbolicLink ?? false
-        let name = values.name ?? url.lastPathComponent
-
-        await accumulator.recordItem(at: url.path)
-
-        guard isDirectory && !isSymlink else {
-            let logical = Int64(values.fileSize ?? 0)
-            let allocated = Int64(values.totalFileAllocatedSize ?? values.fileSize ?? 0)
-            await accumulator.recordBytes(allocated)
+        guard entry.isDirectory && !entry.isSymlink else {
+            await accumulator.recordBytes(entry.allocatedSize)
             return FileNode(
-                url: url,
-                name: name,
+                url: entry.url,
+                name: entry.name,
                 isDirectory: false,
-                logicalSize: logical,
-                allocatedSize: allocated,
-                modificationDate: values.contentModificationDate
+                logicalSize: entry.logicalSize,
+                allocatedSize: entry.allocatedSize,
+                modificationDate: nil
             )
         }
 
         let node = FileNode(
-            url: url,
-            name: name,
+            url: entry.url,
+            name: entry.name,
             isDirectory: true,
-            modificationDate: values.contentModificationDate
+            modificationDate: nil
         )
-        let children = await listChildren(of: url, accumulator: accumulator)
-
+        let children = await listChildEntries(of: entry.url, accumulator: accumulator)
         for child in children {
-            let childNode = try await scanSubtree(at: child, accumulator: accumulator)
+            let childNode = try await scanSubtree(child, accumulator: accumulator)
             childNode.parent = node
             node.children.append(childNode)
             node.logicalSize += childNode.logicalSize
@@ -193,13 +224,76 @@ public struct DiskScanner: Sendable {
         return node
     }
 
-    private static func listChildren(of url: URL, accumulator: ScanAccumulator) async -> [URL] {
+    /// Lists the immediate children of `url`, preferring the bulk-enumeration
+    /// fast path and falling back to FileManager on any failure.
+    private static func listChildEntries(
+        of url: URL,
+        accumulator: ScanAccumulator
+    ) async -> [ChildEntry] {
+        if let bulk = bulkListChildren(of: url) {
+            return bulk
+        }
+        return await fallbackListChildren(of: url, accumulator: accumulator)
+    }
+
+    /// Fast path: enumerate via `getattrlistbulk`. Returns nil if the bridge
+    /// could not open the directory or errored mid-enumeration; callers
+    /// should fall back to FileManager.
+    private static func bulkListChildren(of url: URL) -> [ChildEntry]? {
+        guard let ctx = url.path.withCString({ path in dc_bulk_open(path) }) else {
+            return nil
+        }
+        defer { dc_bulk_close(ctx) }
+
+        let capacity = 64
+        var buffer = [DCBulkEntry](repeating: DCBulkEntry(), count: capacity)
+        var result: [ChildEntry] = []
+
+        while true {
+            let count = buffer.withUnsafeMutableBufferPointer { buf -> Int32 in
+                dc_bulk_next(ctx, buf.baseAddress!, capacity)
+            }
+            if count < 0 { return nil }
+            if count == 0 { break }
+            for i in 0..<Int(count) {
+                let raw = buffer[i]
+                let name = withUnsafePointer(to: raw.name) { ptr -> String in
+                    ptr.withMemoryRebound(to: CChar.self, capacity: 256) {
+                        String(cString: $0)
+                    }
+                }
+                if name.isEmpty || name == "." || name == ".." { continue }
+                let childURL = url.appendingPathComponent(name)
+                result.append(ChildEntry(
+                    url: childURL,
+                    name: name,
+                    isDirectory: raw.is_directory != 0,
+                    isSymlink: raw.is_symlink != 0,
+                    logicalSize: raw.logical_size,
+                    allocatedSize: raw.allocated_size
+                ))
+            }
+        }
+        return result
+    }
+
+    /// Fallback path: use FileManager + URLResourceValues. Slower (one stat
+    /// per entry) but works everywhere.
+    private static func fallbackListChildren(
+        of url: URL,
+        accumulator: ScanAccumulator
+    ) async -> [ChildEntry] {
+        let keys: Set<URLResourceKey> = [
+            .isDirectoryKey, .isSymbolicLinkKey, .nameKey,
+            .fileSizeKey, .totalFileAllocatedSizeKey
+        ]
         do {
-            return try FileManager.default.contentsOfDirectory(
+            let urls = try FileManager.default.contentsOfDirectory(
                 at: url,
-                includingPropertiesForKeys: Array(resourceKeys),
+                includingPropertiesForKeys: Array(keys),
                 options: []
             )
+            return urls.compactMap { ChildEntry.fromURL($0) }
         } catch {
             await accumulator.recordBlockedDirectory()
             return []

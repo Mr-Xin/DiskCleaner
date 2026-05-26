@@ -193,11 +193,12 @@
 				};
 			};
 			buildConfigurationList = 7B8692A92FC4A4FB00184027 /* Build configuration list for PBXProject "DiskCleaner" */;
-			developmentRegion = en;
+			developmentRegion = "zh-Hans";
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
 				Base,
+				"zh-Hans",
 			);
 			mainGroup = 7B8692A52FC4A4FB00184027;
 			minimizedProjectReferenceProxies = 1;

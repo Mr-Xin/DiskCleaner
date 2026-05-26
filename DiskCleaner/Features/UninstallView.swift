@@ -92,6 +92,9 @@ final class UninstallViewModel {
         lastError = nil
         statusMessage = nil
         Task { [weak self] in
+            // Unload any LaunchAgents / Daemons before trashing their plists,
+            // so we don't leave orphan services running.
+            AppUninstaller().unloadLaunchServices(among: leftoverURLs)
             do {
                 let result = try await DeletionService().moveToTrash(targets, source: "uninstall")
                 if result.failures.isEmpty {
