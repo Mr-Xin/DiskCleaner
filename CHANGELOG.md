@@ -2,6 +2,45 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，版本号采用 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.8.0] — 2026-05-26 — DiskFlow Redesign · Sprint 1
+
+接入 `design_handoff_diskflow` 的新视觉系统。Sprint 1 目标：Frame + Sidebar + Toolbar 三个全局组件 + 设计令牌系统。
+
+### 新增
+
+**设计令牌系统（`DiskCleaner/Design/`）**
+
+- `Tokens.swift` —— 全套颜色（bg / glass / line / text / 5 个 neon accents / 7 个 category colors / 3 个 semantic）、字体阶梯、圆角、间距、阴影；含 `Color(hex:)` 初始化扩展。
+- `DarkGlass` ViewModifier —— 用 SwiftUI `.regularMaterial` + 黑色 tint 还原 `rgba(11,14,20,α)` 的深色玻璃质感。
+- `MeshGradientBackground` —— 三个 `RadialGradient`（蓝 / 紫 / 青）叠加在深色 linear gradient 之上，对应 §6 的环境光斑。
+
+**全局 chrome 组件**
+
+- `DesignFrame` —— 整体 shell，承载 sidebar + 主区，背景挂 MeshGradient；macOS 窗口本身的标题栏 + traffic lights 由系统提供。
+- `DesignSidebar` —— 224pt 宽：品牌区（渐变方块 + 文字）→ `WORKSPACE` 段（导航条目，含 SF Symbol 图标和可选 badge）→ `SYSTEM` 段（Settings 入口）→ 底部存储状态卡（卷名 + Healthy 徽章 + stacked bar + Used / Free）。
+- `DesignToolbar` —— 52pt 高：搜索框（含 ⌘K 键徽章）+ Refresh / Bell 图标按钮 + 可扩展尾部 actions。
+
+**功能侧栏扩展**
+
+- `Feature` 枚举重写，对齐 DiskFlow 设计的 7 个 workspace items（Overview / Storage / Large Files / Duplicates / Applications / Memory / External）+ DiskCleaner 原有 3 项（Junk / History / Activity）。
+- 新增 `ComingSoonView`（带 SF Symbol 大图 + 标题 + 计划 Sprint）用作 Overview / Memory / External 的占位。
+- `DiskCleanerApp` 的 `CommandMenu` 重命名为 "Features"，`Cmd+1..7` 对应设计的 7 个主要项，DiskCleaner 原有 3 项保留为无快捷键的菜单项。
+
+### 改动
+
+- `ContentView` 不再用 `NavigationSplitView`，改用 `DesignFrame { sidebar } main: { Toolbar + detail }` 的组合。
+- 现有功能页（DiskMapView / DuplicatesView / UninstallView / JunkCleaningView / HistoryView / AuditLogView）原样挂在新 chrome 下，视觉重做留到对应 sprint。
+- App 窗口 minWidth 由 760 调到 980（要容纳 sidebar 224pt + 主区合理宽度）；用 `.windowStyle(.titleBar)` + `.windowToolbarStyle(.unified)` 让 OS 标题栏与新 Toolbar 衔接更自然。
+- 默认进入页改为 `.storage`（即原来的「磁盘空间可视化」），等 Sprint 2 做完 Overview 后改回 `.overview`。
+
+### 不在 Sprint 1 范围
+
+- Dashboard / Overview 实际内容（Sprint 2）
+- 各功能页详情视图按设计重做（Sprint 3-7）
+- Memory monitor 实时图表（Sprint 6）
+- External drives 支持（更后期）
+- ⌘K 命令面板（v1.x）
+
 ## [0.7.0] — 2026-05-26
 
 实用功能扩展：用户终于能控制扫描什么、看到时间维度的变化、自定义清理规则、被提醒重新扫描。

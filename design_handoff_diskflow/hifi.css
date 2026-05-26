@@ -1,0 +1,656 @@
+/* DiskFlow — Hi-fi design system
+   Dark graphite + frosted glass + soft neon blue/cyan/purple
+   Apple HIG inspired · SF Pro Display · 8pt grid
+*/
+
+:root {
+  /* === Backgrounds === */
+  --bg-0: #07090d;            /* deepest, page underlay */
+  --bg-1: #0d1117;            /* app background */
+  --bg-2: #11161f;            /* sidebar */
+  --bg-3: #161c27;            /* card / surface */
+
+  /* === Glass surfaces === */
+  --glass-1: rgba(255,255,255,0.03);
+  --glass-2: rgba(255,255,255,0.05);
+  --glass-3: rgba(255,255,255,0.08);
+  --glass-hi: rgba(255,255,255,0.12);
+
+  /* === Borders === */
+  --line-1: rgba(255,255,255,0.06);
+  --line-2: rgba(255,255,255,0.10);
+  --line-3: rgba(255,255,255,0.16);
+
+  /* === Text === */
+  --t-1: #f0f3f8;             /* primary */
+  --t-2: #b6bfcf;             /* secondary */
+  --t-3: #7a8497;             /* tertiary */
+  --t-4: #4d566a;             /* faint */
+
+  /* === Accents (soft neon) === */
+  --blue:    #4d9eff;
+  --blue-hi: #6fb3ff;
+  --cyan:    #5dd5e8;
+  --purple:  #9b8bff;
+  --pink:    #d287ff;
+
+  /* category colors */
+  --cat-apps:   #4d9eff;
+  --cat-docs:   #9b8bff;
+  --cat-video:  #d287ff;
+  --cat-photo:  #ff8eb1;
+  --cat-system: #5dd5e8;
+  --cat-cache:  #ffb55c;
+  --cat-other:  #6e7991;
+
+  /* semantic */
+  --good: #5fd49a;
+  --warn: #ffb45c;
+  --danger: #ff6b7d;
+
+  /* === Shadows === */
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-md: 0 4px 16px rgba(0,0,0,0.32), 0 1px 2px rgba(0,0,0,0.4);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,0.5), 0 2px 6px rgba(0,0,0,0.3);
+  --shadow-glow-blue: 0 0 24px rgba(77,158,255,0.35);
+  --shadow-glow-cyan: 0 0 24px rgba(93,213,232,0.30);
+
+  /* === Radii === */
+  --r-xs: 4px;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --r-xl: 18px;
+  --r-2xl: 22px;
+  --r-pill: 999px;
+
+  /* === Type === */
+  --font-ui: -apple-system, "SF Pro Display", "SF Pro Text", BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, monospace;
+}
+
+/* ============ FRAME (mac window) ============ */
+
+.df {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-1);
+  color: var(--t-1);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  letter-spacing: -0.005em;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  /* ambient mesh gradient */
+  background-image:
+    radial-gradient(900px 600px at 12% -10%, rgba(77,158,255,0.16), transparent 60%),
+    radial-gradient(700px 500px at 110% 10%, rgba(155,139,255,0.14), transparent 55%),
+    radial-gradient(800px 600px at 50% 120%, rgba(93,213,232,0.08), transparent 60%),
+    linear-gradient(180deg, #0e131c 0%, #0a0d14 100%);
+}
+
+/* mac titlebar */
+.df-titlebar {
+  height: 38px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  gap: 10px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--line-1);
+  background: rgba(7,9,13,0.4);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  position: relative;
+  z-index: 10;
+}
+.df-traffic { display: flex; gap: 8px; }
+.df-traffic span {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+}
+.df-traffic span:nth-child(1) { background: #ff5f57; box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.3); }
+.df-traffic span:nth-child(2) { background: #febc2e; box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.3); }
+.df-traffic span:nth-child(3) { background: #28c840; box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.3); }
+
+.df-title {
+  flex: 1;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--t-2);
+  letter-spacing: -0.01em;
+}
+
+.df-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+/* ============ SIDEBAR ============ */
+
+.df-sidebar {
+  width: 224px;
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  background: rgba(11,14,20,0.6);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border-right: 1px solid var(--line-1);
+  flex-shrink: 0;
+}
+
+.df-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px 14px;
+}
+.df-brand-mark {
+  width: 28px; height: 28px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, var(--blue), var(--purple) 70%, var(--cyan));
+  box-shadow: 0 4px 14px rgba(77,158,255,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 14px;
+  color: #fff;
+  letter-spacing: -0.02em;
+}
+.df-brand-text {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.df-section-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--t-4);
+  padding: 12px 10px 6px;
+}
+
+.df-nav {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: var(--r-md);
+  font-size: 13px;
+  color: var(--t-2);
+  position: relative;
+  cursor: default;
+  transition: background 120ms;
+}
+.df-nav:hover { background: var(--glass-1); }
+.df-nav.active {
+  background: linear-gradient(180deg, rgba(77,158,255,0.18), rgba(155,139,255,0.12));
+  color: var(--t-1);
+  font-weight: 500;
+  box-shadow: inset 0 0 0 1px rgba(77,158,255,0.25), 0 1px 2px rgba(0,0,0,0.2);
+}
+.df-nav-icon {
+  width: 18px; height: 18px;
+  flex-shrink: 0;
+  color: var(--t-3);
+}
+.df-nav.active .df-nav-icon { color: var(--blue-hi); }
+.df-nav .badge {
+  margin-left: auto;
+  background: var(--glass-3);
+  color: var(--t-2);
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: var(--r-pill);
+  font-variant-numeric: tabular-nums;
+}
+
+/* sidebar bottom stat card */
+.df-side-stat {
+  margin-top: auto;
+  padding: 12px;
+  border-radius: var(--r-lg);
+  background: var(--glass-1);
+  border: 1px solid var(--line-1);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.df-side-stat .stat-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--t-3);
+}
+.df-side-stat .stat-row b { color: var(--t-1); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* ============ TOOLBAR ============ */
+
+.df-toolbar {
+  height: 52px;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  gap: 10px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--line-1);
+  background: rgba(11,14,20,0.4);
+  backdrop-filter: blur(20px);
+}
+
+.df-search {
+  flex: 1;
+  max-width: 480px;
+  height: 32px;
+  border-radius: var(--r-md);
+  background: var(--glass-2);
+  border: 1px solid var(--line-1);
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12.5px;
+  color: var(--t-3);
+}
+.df-search:focus-within {
+  border-color: rgba(77,158,255,0.5);
+  background: var(--glass-3);
+  box-shadow: 0 0 0 3px rgba(77,158,255,0.1);
+}
+.df-search .kbd {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--glass-2);
+  border: 1px solid var(--line-1);
+  color: var(--t-3);
+}
+
+/* ============ BUTTONS ============ */
+
+.df-btn {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: var(--r-md);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--t-1);
+  background: var(--glass-2);
+  border: 1px solid var(--line-2);
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  transition: background 120ms, transform 80ms;
+  white-space: nowrap;
+}
+.df-btn:hover { background: var(--glass-3); }
+.df-btn:active { transform: translateY(0.5px); }
+.df-btn.sm { height: 26px; padding: 0 10px; font-size: 11.5px; border-radius: 7px; }
+.df-btn.ghost { background: transparent; border-color: var(--line-1); color: var(--t-2); }
+.df-btn.ghost:hover { background: var(--glass-1); color: var(--t-1); }
+
+.df-btn.primary {
+  background: linear-gradient(180deg, var(--blue) 0%, #3a87f0 100%);
+  border: 1px solid rgba(77,158,255,0.6);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(77,158,255,0.35), inset 0 1px 0 rgba(255,255,255,0.2);
+  font-weight: 600;
+}
+.df-btn.primary:hover {
+  background: linear-gradient(180deg, var(--blue-hi) 0%, #4d97ff 100%);
+  box-shadow: 0 6px 20px rgba(77,158,255,0.5), inset 0 1px 0 rgba(255,255,255,0.25);
+}
+.df-btn.danger {
+  color: var(--danger);
+  background: rgba(255,107,125,0.08);
+  border-color: rgba(255,107,125,0.25);
+}
+.df-btn.danger:hover { background: rgba(255,107,125,0.15); }
+
+.df-icon-btn {
+  width: 32px; height: 32px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  background: var(--glass-2);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-md);
+  color: var(--t-2);
+  cursor: pointer;
+}
+.df-icon-btn:hover { background: var(--glass-3); color: var(--t-1); }
+
+/* ============ MAIN ============ */
+
+.df-main {
+  flex: 1;
+  padding: 22px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-height: 0;
+}
+
+.df-h1 {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--t-1);
+}
+.df-h2 {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin: 0;
+  color: var(--t-1);
+}
+.df-h3 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0;
+  color: var(--t-2);
+}
+.df-p {
+  font-size: 12.5px;
+  color: var(--t-3);
+  margin: 0;
+  line-height: 1.5;
+}
+.df-label {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--t-4);
+}
+.df-mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* ============ CARDS / SURFACES ============ */
+
+.df-card {
+  background: var(--glass-1);
+  border: 1px solid var(--line-1);
+  border-radius: var(--r-xl);
+  padding: 18px;
+  position: relative;
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+}
+.df-card.elevated {
+  background: var(--glass-2);
+  border-color: var(--line-2);
+  box-shadow: var(--shadow-md);
+}
+.df-card.glow-blue {
+  box-shadow: var(--shadow-md), 0 0 60px -10px rgba(77,158,255,0.25);
+  border-color: rgba(77,158,255,0.18);
+}
+
+/* ============ CHIPS / PILLS ============ */
+
+.df-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 10px;
+  border-radius: var(--r-pill);
+  background: var(--glass-2);
+  border: 1px solid var(--line-1);
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--t-2);
+}
+.df-chip.active {
+  background: rgba(77,158,255,0.18);
+  border-color: rgba(77,158,255,0.4);
+  color: var(--blue-hi);
+}
+.df-chip .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 8px currentColor;
+}
+.df-chip.good { color: var(--good); }
+.df-chip.warn { color: var(--warn); }
+.df-chip.danger { color: var(--danger); }
+
+/* ============ BARS ============ */
+
+.df-bar {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--glass-2);
+  overflow: hidden;
+  position: relative;
+}
+.df-bar > i {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--blue), var(--cyan));
+  box-shadow: 0 0 12px rgba(77,158,255,0.4);
+}
+.df-bar.warn > i { background: linear-gradient(90deg, var(--warn), #ff8b6b); box-shadow: 0 0 12px rgba(255,180,92,0.4); }
+.df-bar.good > i { background: linear-gradient(90deg, var(--good), var(--cyan)); box-shadow: 0 0 12px rgba(95,212,154,0.4); }
+.df-bar.danger > i { background: linear-gradient(90deg, var(--danger), #ff8b6b); box-shadow: 0 0 12px rgba(255,107,125,0.4); }
+
+/* segmented stacked bar */
+.df-stacked-bar {
+  height: 10px;
+  border-radius: 5px;
+  background: var(--glass-2);
+  overflow: hidden;
+  display: flex;
+  box-shadow: inset 0 0 0 1px var(--line-1);
+}
+.df-stacked-bar > span {
+  display: block;
+  height: 100%;
+  position: relative;
+}
+.df-stacked-bar > span:not(:last-child)::after {
+  content: ''; position: absolute; right: 0; top: 0; bottom: 0; width: 1px;
+  background: rgba(0,0,0,0.3);
+}
+
+/* ============ TABLES ============ */
+
+.df-table {
+  width: 100%;
+}
+.df-row {
+  display: grid;
+  align-items: center;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line-1);
+  font-size: 12.5px;
+  color: var(--t-2);
+}
+.df-row:hover { background: var(--glass-1); }
+.df-row.selected { background: rgba(77,158,255,0.10); }
+.df-row.head {
+  font-size: 10.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--t-4);
+  border-bottom: 1px solid var(--line-2);
+}
+
+/* checkbox */
+.df-check {
+  width: 16px; height: 16px;
+  border-radius: 4px;
+  background: var(--glass-2);
+  border: 1px solid var(--line-2);
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+.df-check.on {
+  background: linear-gradient(180deg, var(--blue), #3a87f0);
+  border-color: rgba(77,158,255,0.6);
+  box-shadow: 0 2px 8px rgba(77,158,255,0.35);
+}
+.df-check.on::after {
+  content: '';
+  width: 8px; height: 4px;
+  border-left: 1.5px solid #fff;
+  border-bottom: 1.5px solid #fff;
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+
+/* ============ DONUT / VIZ CHROME ============ */
+
+.df-donut {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+.df-donut svg {
+  filter: drop-shadow(0 4px 24px rgba(77,158,255,0.25));
+}
+.df-donut .donut-center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  pointer-events: none;
+}
+.df-donut .donut-big {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--t-1);
+}
+.df-donut .donut-sub {
+  font-size: 11.5px;
+  color: var(--t-3);
+  margin-top: 2px;
+}
+
+/* ============ ICONS (drawn) ============ */
+
+.icn { width: 18px; height: 18px; flex-shrink: 0; display: inline-block; vertical-align: middle; }
+
+/* ============ FILE TYPE GLYPH ============ */
+
+.df-glyph {
+  width: 32px; height: 32px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #fff;
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+}
+.df-glyph.video  { background: linear-gradient(135deg, var(--cat-video),  var(--purple)); }
+.df-glyph.archive{ background: linear-gradient(135deg, var(--cat-cache),  #ff8b6b); }
+.df-glyph.image  { background: linear-gradient(135deg, var(--cat-photo),  var(--purple)); }
+.df-glyph.doc    { background: linear-gradient(135deg, var(--cat-docs),   var(--blue)); }
+.df-glyph.data   { background: linear-gradient(135deg, var(--cat-system), var(--blue)); }
+.df-glyph.folder { background: linear-gradient(135deg, var(--cat-other),  #4d566a); }
+.df-glyph.cache  { background: linear-gradient(135deg, var(--cat-cache),  var(--warn)); }
+
+/* ============ SPARKLINE ============ */
+
+.df-spark { width: 80px; height: 24px; }
+
+/* ============ FLOATING ACTION BAR ============ */
+
+.df-faction {
+  margin-top: auto;
+  background: rgba(22,28,39,0.85);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-xl);
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  box-shadow: var(--shadow-lg);
+}
+
+/* ============ MISC ============ */
+
+.df-divider { height: 1px; background: var(--line-1); }
+
+.df-noise::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.04 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  opacity: 0.6;
+  mix-blend-mode: overlay;
+  border-radius: inherit;
+}
+
+/* canvas bg */
+body { background: #0a0d14; }
+
+/* ============ COMMAND PALETTE OVERLAY ============ */
+.df-palette {
+  width: 560px;
+  background: rgba(20,24,34,0.78);
+  border: 1px solid var(--line-3);
+  border-radius: var(--r-2xl);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.04), 0 0 80px rgba(77,158,255,0.15);
+  backdrop-filter: blur(60px) saturate(180%);
+  -webkit-backdrop-filter: blur(60px) saturate(180%);
+  overflow: hidden;
+}
+
+/* sunburst hover ring */
+.df-sun-ring {
+  fill: none;
+  stroke: rgba(255,255,255,0.04);
+  stroke-width: 1;
+}
+
+/* tooltip */
+.df-tip {
+  position: absolute;
+  background: rgba(20,24,34,0.92);
+  backdrop-filter: blur(20px);
+  border: 1px solid var(--line-2);
+  border-radius: var(--r-md);
+  padding: 10px 12px;
+  box-shadow: var(--shadow-lg);
+  font-size: 12px;
+  color: var(--t-1);
+  pointer-events: none;
+  z-index: 10;
+  min-width: 180px;
+}
+
+/* selection ring */
+.df-sel-ring {
+  box-shadow: 0 0 0 2px var(--blue), 0 0 24px rgba(77,158,255,0.4);
+}

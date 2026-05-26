@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>DiskFlow · Hi-fi Design</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="hifi.css" />
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #07090d; overflow: hidden; }
+    #root { width: 100%; height: 100%; }
+    /* design canvas styles get overridden where they affect the warm canvas bg.
+       Keep the canvas dark to suit the design. */
+    body { background: #0a0d14 !important; }
+    /* DesignCanvas section titles need to be light on dark */
+    [class*='dc-'] [contenteditable] { color: var(--t-1) !important; }
+  </style>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="hifi-shared.jsx"></script>
+  <script type="text/babel" src="hifi-dashboard.jsx"></script>
+  <script type="text/babel" src="hifi-screens-1.jsx"></script>
+  <script type="text/babel" src="hifi-screens-2.jsx"></script>
+
+  <script type="text/babel">
+    // Standard mac desktop window dimensions for the artboards
+    const W = 1280, H = 800;
+
+    function App() {
+      return (
+        <DesignCanvas>
+          <DCSection id="primary" title="01 · Primary Screens" subtitle="The four screens users will spend 90% of their time in.">
+            <DCArtboard id="dashboard" label="Dashboard · Overview" width={W} height={H}>
+              <HiFiDashboard />
+            </DCArtboard>
+            <DCArtboard id="analyzer" label="Storage Analyzer · Sunburst drill-down" width={W} height={H}>
+              <HiFiAnalyzer />
+            </DCArtboard>
+            <DCArtboard id="large-files" label="Large File Finder · Table + preview" width={W} height={H}>
+              <HiFiLargeFiles />
+            </DCArtboard>
+            <DCArtboard id="duplicates" label="Duplicate Cleaner · Side-by-side" width={W} height={H}>
+              <HiFiDuplicates />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="secondary" title="02 · Secondary Screens" subtitle="Memory monitor, app uninstaller, settings.">
+            <DCArtboard id="memory" label="Memory Monitor · Live RAM + processes" width={W} height={H}>
+              <HiFiMemory />
+            </DCArtboard>
+            <DCArtboard id="apps" label="App Uninstaller · Grid + leftover data" width={W} height={H}>
+              <HiFiApps />
+            </DCArtboard>
+            <DCArtboard id="settings" label="Settings" width={W} height={H}>
+              <HiFiSettings />
+            </DCArtboard>
+          </DCSection>
+
+          <DCSection id="states" title="03 · States" subtitle="Empty, loading, success, error.">
+            <DCArtboard id="empty"   label="Empty · First run"        width={W} height={H}>
+              <HiFiEmpty />
+            </DCArtboard>
+            <DCArtboard id="loading" label="Loading · Scanning"       width={W} height={H}>
+              <HiFiLoading />
+            </DCArtboard>
+            <DCArtboard id="success" label="Success · Cleanup done"   width={W} height={H}>
+              <HiFiSuccess />
+            </DCArtboard>
+            <DCArtboard id="error"   label="Error · Permission needed" width={W} height={H}>
+              <HiFiError />
+            </DCArtboard>
+          </DCSection>
+        </DesignCanvas>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

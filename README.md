@@ -2,7 +2,7 @@
 
 一款面向 macOS 的磁盘管理与清理工具：看清磁盘空间被什么占用、安全地回收无用空间、干净地卸载应用。
 
-> **项目状态：v0.7 — 实用功能扩展：排除路径、自定义清理规则、扫描历史与趋势图、定时扫描提醒。** 后续推进完整本地化与代码签名 / 正式发布（v1.0）。更新见 [`CHANGELOG.md`](CHANGELOG.md)。
+> **项目状态：v0.8 — DiskFlow 视觉重设计 Sprint 1：全套设计令牌 + Frame / Sidebar / Toolbar 三大 chrome 组件。** 后续 sprints 推进 Dashboard、各功能页重做、Memory monitor、命令面板。更新见 [`CHANGELOG.md`](CHANGELOG.md)。
 
 ## 功能
 

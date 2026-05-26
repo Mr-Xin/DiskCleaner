@@ -12,7 +12,7 @@ import SwiftUI
 @main
 struct DiskCleanerApp: App {
 
-    @State private var selection: Feature? = .visualization
+    @State private var selection: Feature? = .storage
 
     init() {
         // Register the periodic scan-reminder activity (no-op if disabled).
@@ -22,24 +22,31 @@ struct DiskCleanerApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView(selection: $selection)
-                .frame(minWidth: 760, minHeight: 480)
+                .frame(minWidth: 980, minHeight: 620)
         }
         .windowResizability(.contentMinSize)
+        .windowStyle(.titleBar)
+        .windowToolbarStyle(.unified)
         .commands {
-            CommandMenu("功能") {
-                Button("磁盘可视化") { selection = .visualization }
+            CommandMenu("Features") {
+                Button("Overview")     { selection = .overview }
                     .keyboardShortcut("1")
-                Button("垃圾清理") { selection = .junk }
+                Button("Storage")      { selection = .storage }
                     .keyboardShortcut("2")
-                Button("大文件 / 重复文件") { selection = .duplicates }
+                Button("Large Files")  { selection = .largeFiles }
                     .keyboardShortcut("3")
-                Button("应用卸载") { selection = .uninstall }
+                Button("Duplicates")   { selection = .duplicates }
                     .keyboardShortcut("4")
-                Button("扫描历史") { selection = .history }
+                Button("Applications") { selection = .applications }
                     .keyboardShortcut("5")
-                Divider()
-                Button("最近操作") { selection = .audit }
+                Button("Memory")       { selection = .memory }
                     .keyboardShortcut("6")
+                Button("External")     { selection = .external }
+                    .keyboardShortcut("7")
+                Divider()
+                Button("Junk Cleaning")    { selection = .junk }
+                Button("Scan History")     { selection = .history }
+                Button("Recent Activity")  { selection = .activity }
             }
         }
 

@@ -2,49 +2,62 @@
 //  ContentView.swift
 //  DiskCleaner
 //
-//  The application shell. The top-level Feature selection is owned by
-//  `DiskCleanerApp` so the menu bar's CommandMenu can drive it; ContentView
-//  accepts it as a `Binding`.
-//
-//  The sidebar pins a footer button at its bottom edge that opens a popup
-//  menu (Claude-style) with Settings, a Language submenu, and About — the
-//  most common per-app actions one click away from anywhere in the app.
+//  The application shell — now wraps everything in the DiskFlow `DesignFrame`
+//  with the new `DesignSidebar` + `DesignToolbar`. Detail views remain the
+//  existing implementations; they'll be visually re-skinned in later sprints.
 //
 
 import SwiftUI
 import AppKit
 import DiskCleanerCore
 
-/// Top-level features of DiskCleaner.
+/// Top-level features of the app. Order and ids align with the DiskFlow
+/// sidebar in `design_handoff_diskflow/hifi-shared.jsx :: SIDE_ITEMS`, plus
+/// DiskCleaner's own extras (`junk` / `history` / `activity`) tacked on.
 enum Feature: String, CaseIterable, Identifiable {
-    case visualization
-    case junk
+    // DiskFlow workspace items
+    case overview
+    case storage
+    case largeFiles
     case duplicates
-    case uninstall
+    case applications
+    case memory
+    case external
+
+    // DiskCleaner extras
+    case junk
     case history
-    case audit
+    case activity
 
     var id: String { rawValue }
 
     var title: String {
         switch self {
-        case .visualization: "磁盘空间可视化"
-        case .junk:          "垃圾清理"
-        case .duplicates:    "大文件 / 重复文件"
-        case .uninstall:     "应用卸载"
-        case .history:       "扫描历史"
-        case .audit:         "最近操作"
+        case .overview:     "Overview"
+        case .storage:      "Storage"
+        case .largeFiles:   "Large Files"
+        case .duplicates:   "Duplicates"
+        case .applications: "Applications"
+        case .memory:       "Memory"
+        case .external:     "External"
+        case .junk:         "Junk Cleaning"
+        case .history:      "Scan History"
+        case .activity:     "Recent Activity"
         }
     }
 
     var systemImage: String {
         switch self {
-        case .visualization: "chart.pie"
-        case .junk:          "trash"
-        case .duplicates:    "doc.on.doc"
-        case .uninstall:     "xmark.bin"
-        case .history:       "chart.line.uptrend.xyaxis"
-        case .audit:         "clock.arrow.circlepath"
+        case .overview:     "square.grid.2x2"
+        case .storage:      "internaldrive"
+        case .largeFiles:   "doc"
+        case .duplicates:   "doc.on.doc"
+        case .applications: "square.grid.3x3"
+        case .memory:       "cpu"
+        case .external:     "externaldrive"
+        case .junk:         "trash"
+        case .history:      "chart.line.uptrend.xyaxis"
+        case .activity:     "clock.arrow.circlepath"
         }
     }
 }
@@ -54,10 +67,13 @@ struct ContentView: View {
     @Binding var selection: Feature?
     @State private var hasFullDiskAccess: Bool
     @State private var showOnboarding: Bool
+    @State private var searchText: String = ""
 
     @AppStorage(AppSettings.appLanguageKey)
     private var appLanguage: AppLanguage = AppSettings.appLanguageDefault
     @State private var showLanguageRestartAlert = false
+
+    @Environment(\.openSettings) private var openSettings
 
     init(selection: Binding<Feature?>) {
         self._selection = selection
@@ -85,130 +101,117 @@ struct ContentView: View {
     }
 
     private var mainView: some View {
-        NavigationSplitView {
+        DesignFrame {
+            sidebar
+        } main: {
             VStack(spacing: 0) {
-                List(Feature.allCases, selection: $selection) { feature in
-                    Label(feature.title, systemImage: feature.systemImage)
-                        .tag(feature)
-                }
-                .navigationTitle("DiskCleaner")
-
-                Divider()
-                sidebarFooter
+                DesignToolbar(
+                    searchText: $searchText,
+                    placeholder: "Search files, apps, caches…",
+                    onRefresh: {},
+                    onNotifications: {}
+                )
+                detailView
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .navigationSplitViewColumnWidth(min: 210, ideal: 240)
-        } detail: {
-            detailView
         }
     }
+
+    // MARK: - Sidebar
+
+    private var sidebar: some View {
+        let usage = Self.mainVolumeUsage()
+        return DesignSidebar(
+            workspaceItems: workspaceItems,
+            selection: Binding(
+                get: { selection?.rawValue },
+                set: { newID in
+                    if let newID, let feature = Feature(rawValue: newID) {
+                        selection = feature
+                    }
+                }
+            ),
+            onSettingsTap: { openSettings() },
+            brandName: "DiskFlow",
+            storageVolume: usage.label,
+            storageHealth: "Healthy",
+            storageUsedBytes: usage.used,
+            storageFreeBytes: usage.free,
+            storageBreakdown: Self.placeholderBreakdown()
+        )
+    }
+
+    private var workspaceItems: [DesignNavItem] {
+        Feature.allCases.map { feature in
+            DesignNavItem(
+                id: feature.rawValue,
+                label: feature.title,
+                systemImage: feature.systemImage
+            )
+        }
+    }
+
+    // MARK: - Detail routing
 
     @ViewBuilder
     private var detailView: some View {
-        switch selection ?? .visualization {
-        case .visualization: DiskMapView()
-        case .junk:          JunkCleaningView()
-        case .duplicates:    DuplicatesView()
-        case .uninstall:     UninstallView()
-        case .history:       HistoryView()
-        case .audit:         AuditLogView()
+        switch selection ?? .storage {
+        case .overview:
+            ComingSoonView(title: "Overview",  systemImage: "square.grid.2x2", plannedSprint: "Sprint 2")
+        case .storage:
+            DiskMapView()
+        case .largeFiles:
+            DuplicatesView()
+        case .duplicates:
+            DuplicatesView()
+        case .applications:
+            UninstallView()
+        case .memory:
+            ComingSoonView(title: "Memory",    systemImage: "cpu",            plannedSprint: "Sprint 6")
+        case .external:
+            ComingSoonView(title: "External Drives", systemImage: "externaldrive", plannedSprint: "later")
+        case .junk:
+            JunkCleaningView()
+        case .history:
+            HistoryView()
+        case .activity:
+            AuditLogView()
         }
     }
 
-    // MARK: - Sidebar Footer Menu
+    // MARK: - Storage usage helpers
 
-    private var sidebarFooter: some View {
-        Menu {
-            SettingsLink {
-                Label("设置", systemImage: "gearshape")
-            }
-            .keyboardShortcut(",", modifiers: .command)
-
-            Menu {
-                ForEach(AppLanguage.allCases) { language in
-                    Button {
-                        selectLanguage(language)
-                    } label: {
-                        languageMenuLabel(for: language)
-                    }
-                }
-            } label: {
-                Label("语言", systemImage: "globe")
-            }
-
-            Divider()
-
-            Button {
-                showAboutPanel()
-            } label: {
-                Label("关于 DiskCleaner", systemImage: "info.circle")
-            }
-        } label: {
-            HStack(spacing: 10) {
-                Image(systemName: "internaldrive.fill")
-                    .font(.system(size: 16))
-                    .foregroundStyle(.tint)
-                    .frame(width: 32, height: 32)
-                    .background(.tint.opacity(0.15), in: Circle())
-
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(verbatim: "DiskCleaner")
-                        .fontWeight(.medium)
-                        .foregroundStyle(.primary)
-                    Text(verbatim: "v\(appVersion)")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                Image(systemName: "chevron.up.chevron.down")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 10)
-            .contentShape(Rectangle())
+    private static func mainVolumeUsage() -> (used: Int64, free: Int64, label: String) {
+        let url = URL(fileURLWithPath: "/")
+        let keys: Set<URLResourceKey> = [
+            .volumeTotalCapacityKey,
+            .volumeAvailableCapacityKey,
+            .volumeNameKey
+        ]
+        guard let values = try? url.resourceValues(forKeys: keys) else {
+            return (used: 0, free: 0, label: "Macintosh HD")
         }
-        .menuStyle(.borderlessButton)
-        .menuIndicator(.hidden)
-        .padding(.horizontal, 6)
-        .padding(.vertical, 6)
+        let total = Int64(values.volumeTotalCapacity ?? 0)
+        let free = Int64(values.volumeAvailableCapacity ?? 0)
+        let used = max(0, total - free)
+        let label = values.volumeName ?? "Macintosh HD"
+        return (used: used, free: free, label: label)
     }
 
-    private var appVersion: String {
-        (Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String) ?? "0.0"
+    /// Placeholder category breakdown ratios. Real per-category data will be
+    /// surfaced in Sprint 2 when the Overview/Dashboard is built.
+    private static func placeholderBreakdown() -> [StorageBreakdownSegment] {
+        [
+            .init(color: DesignTokens.Palette.catApps,   percent: 0.22),
+            .init(color: DesignTokens.Palette.catDocs,   percent: 0.14),
+            .init(color: DesignTokens.Palette.catVideo,  percent: 0.10),
+            .init(color: DesignTokens.Palette.catPhoto,  percent: 0.08),
+            .init(color: DesignTokens.Palette.catSystem, percent: 0.07),
+            .init(color: DesignTokens.Palette.catCache,  percent: 0.04)
+        ]
     }
 
-    /// Each language is shown in its own name, with a checkmark on the
-    /// currently selected one. "简体中文" and "English" stay untranslated;
-    /// "跟随系统" follows the UI language.
-    @ViewBuilder
-    private func languageMenuLabel(for language: AppLanguage) -> some View {
-        let isSelected = appLanguage == language
-        Label {
-            switch language {
-            case .system:  Text("跟随系统")
-            case .chinese: Text(verbatim: "简体中文")
-            case .english: Text(verbatim: "English")
-            }
-        } icon: {
-            if isSelected {
-                Image(systemName: "checkmark")
-            }
-        }
-    }
-
-    private func selectLanguage(_ language: AppLanguage) {
-        guard language != appLanguage else { return }
-        appLanguage = language
-        language.apply()
-        showLanguageRestartAlert = true
-    }
-
-    private func showAboutPanel() {
-        NSApplication.shared.activate(ignoringOtherApps: true)
-        NSApplication.shared.orderFrontStandardAboutPanel(nil)
-    }
+    // MARK: - Misc
 
     private func relaunchApp() {
         let bundleURL = Bundle.main.bundleURL
@@ -221,5 +224,5 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView(selection: .constant(.visualization))
+    ContentView(selection: .constant(.storage))
 }
