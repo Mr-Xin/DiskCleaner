@@ -2,10 +2,13 @@
 //  DesignSidebar.swift
 //  DiskCleaner
 //
-//  The 224px-wide left navigation column of the DiskFlow shell:
-//    brand row  →  WORKSPACE section  →  SYSTEM section  →  storage stat
-//  Backed by dark glass; selection is driven by a `Binding<String?>` keyed
-//  on each `DesignNavItem.id`.
+//  The 224pt-wide left navigation column of the DiskFlow shell:
+//    brand row  →  WORKSPACE section  →  SYSTEM section  →  storage stat card
+//
+//  Both nav sections drive the same `selection` binding — Settings is just a
+//  regular nav item in the SYSTEM section now (no special tap handler).
+//  Labels and section headings come from `Localizable.xcstrings` so the UI
+//  stays in sync with the user-chosen language.
 //
 
 import SwiftUI
@@ -15,13 +18,14 @@ import DiskCleanerCore
 
 struct DesignNavItem: Identifiable, Hashable {
     let id: String
-    let label: String
+    /// i18n key resolved via xcstrings (e.g. `"feature.overview"`).
+    let labelKey: String
     let systemImage: String
     var badge: String? = nil
 
-    init(id: String, label: String, systemImage: String, badge: String? = nil) {
+    init(id: String, labelKey: String, systemImage: String, badge: String? = nil) {
         self.id = id
-        self.label = label
+        self.labelKey = labelKey
         self.systemImage = systemImage
         self.badge = badge
     }
@@ -38,16 +42,13 @@ struct StorageBreakdownSegment: Identifiable {
 struct DesignSidebar: View {
 
     let workspaceItems: [DesignNavItem]
+    let systemItems: [DesignNavItem]
     @Binding var selection: String?
-
-    /// Tapped on the dedicated Settings row (which doesn't change `selection`).
-    let onSettingsTap: () -> Void
 
     let brandName: String
 
     // Storage stat card data
     let storageVolume: String
-    let storageHealth: String
     let storageUsedBytes: Int64
     let storageFreeBytes: Int64
     let storageBreakdown: [StorageBreakdownSegment]
@@ -57,13 +58,15 @@ struct DesignSidebar: View {
             brandRow
                 .padding(.bottom, 8)
 
-            sectionLabel("WORKSPACE")
+            sectionLabel("sidebar.section.workspace")
             ForEach(workspaceItems) { item in
                 navRow(item)
             }
 
-            sectionLabel("SYSTEM")
-            settingsRow
+            sectionLabel("sidebar.section.system")
+            ForEach(systemItems) { item in
+                navRow(item)
+            }
 
             Spacer(minLength: 0)
 
@@ -120,9 +123,9 @@ struct DesignSidebar: View {
 
     // MARK: Section label
 
-    private func sectionLabel(_ text: String) -> some View {
+    private func sectionLabel(_ key: String) -> some View {
         HStack {
-            Text(text)
+            Text(LocalizedStringKey(key))
                 .font(.system(size: 10.5, weight: .semibold))
                 .tracking(0.84)
                 .foregroundStyle(DesignTokens.Palette.text4)
@@ -145,14 +148,14 @@ struct DesignSidebar: View {
                                      ? DesignTokens.Palette.blueHi
                                      : DesignTokens.Palette.text3)
                     .frame(width: 18, height: 18)
-                Text(item.label)
+                Text(LocalizedStringKey(item.labelKey))
                     .font(.system(size: 13, weight: isActive ? .medium : .regular))
                     .foregroundStyle(isActive
                                      ? DesignTokens.Palette.text1
                                      : DesignTokens.Palette.text2)
                 Spacer()
                 if let badge = item.badge {
-                    Text(badge)
+                    Text(verbatim: badge)
                         .font(.system(size: 10, weight: .semibold).monospacedDigit())
                         .foregroundStyle(DesignTokens.Palette.text2)
                         .padding(.horizontal, 7)
@@ -163,25 +166,6 @@ struct DesignSidebar: View {
             .padding(.horizontal, 10)
             .padding(.vertical, 7)
             .background(activeBackground(isActive: isActive))
-            .contentShape(Rectangle())
-        }
-        .buttonStyle(.plain)
-    }
-
-    private var settingsRow: some View {
-        Button(action: onSettingsTap) {
-            HStack(spacing: 10) {
-                Image(systemName: "gearshape")
-                    .font(.system(size: 14))
-                    .foregroundStyle(DesignTokens.Palette.text3)
-                    .frame(width: 18, height: 18)
-                Text("Settings")
-                    .font(.system(size: 13))
-                    .foregroundStyle(DesignTokens.Palette.text2)
-                Spacer()
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 7)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -220,7 +204,7 @@ struct DesignSidebar: View {
     private var storageCard: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(storageVolume)
+                Text(verbatim: storageVolume)
                     .font(.system(size: 11))
                     .foregroundStyle(DesignTokens.Palette.text3)
                 Spacer()
@@ -228,9 +212,9 @@ struct DesignSidebar: View {
             }
             stackedBar
             HStack {
-                statLine(label: "Used", value: ByteSize.formatted(storageUsedBytes))
+                statLine(labelKey: "sidebar.storage.used", value: ByteSize.formatted(storageUsedBytes))
                 Spacer()
-                statLine(label: "Free", value: ByteSize.formatted(storageFreeBytes))
+                statLine(labelKey: "sidebar.storage.free", value: ByteSize.formatted(storageFreeBytes))
             }
         }
         .padding(12)
@@ -250,7 +234,7 @@ struct DesignSidebar: View {
                 .fill(DesignTokens.Palette.good)
                 .frame(width: 6, height: 6)
                 .shadow(color: DesignTokens.Palette.good, radius: 4)
-            Text(storageHealth)
+            Text(LocalizedStringKey("sidebar.storage.healthy"))
                 .font(.system(size: 10, weight: .medium))
                 .foregroundStyle(DesignTokens.Palette.good)
         }
@@ -278,12 +262,12 @@ struct DesignSidebar: View {
         )
     }
 
-    private func statLine(label: String, value: String) -> some View {
+    private func statLine(labelKey: String, value: String) -> some View {
         HStack(spacing: 4) {
-            Text(label)
+            Text(LocalizedStringKey(labelKey))
                 .font(.system(size: 11))
                 .foregroundStyle(DesignTokens.Palette.text3)
-            Text(value)
+            Text(verbatim: value)
                 .font(.system(size: 11, weight: .semibold).monospacedDigit())
                 .foregroundStyle(DesignTokens.Palette.text1)
         }

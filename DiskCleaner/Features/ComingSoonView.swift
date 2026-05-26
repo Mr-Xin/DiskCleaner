@@ -11,8 +11,10 @@ import SwiftUI
 
 struct ComingSoonView: View {
 
-    let title: String
+    /// i18n key for the feature title (e.g. `"feature.overview"`).
+    let titleKey: LocalizedStringKey
     let systemImage: String
+    /// Free-form short string (e.g. `"Sprint 2"`). Verbatim — not localized.
     let plannedSprint: String
 
     var body: some View {
@@ -32,13 +34,17 @@ struct ComingSoonView: View {
                 )
                 .shadow(color: DesignTokens.Palette.blue.opacity(0.35), radius: 18)
 
-            Text(verbatim: title)
+            Text(titleKey)
                 .font(.system(size: 22, weight: .semibold))
                 .foregroundStyle(DesignTokens.Palette.text1)
 
-            Text("Coming in \(plannedSprint).")
-                .font(.system(size: 13))
-                .foregroundStyle(DesignTokens.Palette.text3)
+            HStack(spacing: 4) {
+                Text("coming_soon.suffix")
+                Text(verbatim: "·")
+                Text(verbatim: plannedSprint)
+            }
+            .font(.system(size: 13))
+            .foregroundStyle(DesignTokens.Palette.text3)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(40)
@@ -47,7 +53,7 @@ struct ComingSoonView: View {
 
 #Preview {
     ComingSoonView(
-        title: "Overview",
+        titleKey: "feature.overview",
         systemImage: "square.grid.2x2",
         plannedSprint: "Sprint 2"
     )

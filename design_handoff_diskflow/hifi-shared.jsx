@@ -31,13 +31,14 @@ const Icon = {
 };
 
 const SIDE_ITEMS = [
-  { id: 'overview',  label: 'Overview',     icon: 'grid' },
-  { id: 'analyze',   label: 'Storage',      icon: 'disk',     badge: '312 GB' },
-  { id: 'large',     label: 'Large Files',  icon: 'doc',      badge: '128' },
-  { id: 'dupes',     label: 'Duplicates',   icon: 'copy',     badge: '42' },
-  { id: 'apps',      label: 'Applications', icon: 'apps' },
-  { id: 'memory',    label: 'Memory',       icon: 'cpu' },
-  { id: 'drives',    label: 'External',     icon: 'drive' },
+  { id: 'overview',  label: '总览',         icon: 'grid' },
+  { id: 'cleanup',   label: '智能清理',     icon: 'sparkle',  badge: '12.4 GB' },
+  { id: 'analyze',   label: '存储分析',     icon: 'disk',     badge: '312 GB' },
+  { id: 'large',     label: '大文件',         icon: 'doc',      badge: '128' },
+  { id: 'dupes',     label: '重复文件',     icon: 'copy',     badge: '42' },
+  { id: 'apps',      label: '应用程序',     icon: 'apps' },
+  { id: 'memory',    label: '内存',           icon: 'cpu' },
+  { id: 'drives',    label: '外接磁盘',     icon: 'drive' },
 ];
 
 function Frame({ title, children, sidebarActive = 'overview' }) {
@@ -66,7 +67,7 @@ function Sidebar({ active }) {
         <div className="df-brand-text">DiskFlow</div>
       </div>
 
-      <div className="df-section-label">Workspace</div>
+      <div className="df-section-label">工作区</div>
       {SIDE_ITEMS.map(it => (
         <div key={it.id} className={'df-nav ' + (active === it.id ? 'active' : '')}>
           <span className="df-nav-icon">{Icon[it.icon]}</span>
@@ -75,17 +76,17 @@ function Sidebar({ active }) {
         </div>
       ))}
 
-      <div className="df-section-label">System</div>
+      <div className="df-section-label">系统</div>
       <div className={'df-nav ' + (active === 'settings' ? 'active' : '')}>
         <span className="df-nav-icon">{Icon.settings}</span>
-        <span>Settings</span>
+        <span>设置</span>
       </div>
 
       <div className="df-side-stat">
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 11, color: 'var(--t-3)' }}>Macintosh HD</span>
           <span className="df-chip good" style={{ height: 18, fontSize: 10, padding: '0 6px' }}>
-            <span className="dot"></span>Healthy
+            <span className="dot"></span>健康
           </span>
         </div>
         <div className="df-stacked-bar">
@@ -96,13 +97,13 @@ function Sidebar({ active }) {
           <span style={{ width: '7%',  background: 'var(--cat-system)' }}></span>
           <span style={{ width: '4%',  background: 'var(--cat-cache)' }}></span>
         </div>
-        <div className="stat-row"><span>Used <b>312 GB</b></span><span>Free <b>200 GB</b></span></div>
+        <div className="stat-row"><span>已用 <b>312 GB</b></span><span>剩余 <b>200 GB</b></span></div>
       </div>
     </aside>
   );
 }
 
-function Toolbar({ search = 'Search files, apps, caches…', actions, leftExtra }) {
+function Toolbar({ search = '搜索文件、应用、缓存…', actions, leftExtra }) {
   return (
     <div className="df-toolbar">
       {leftExtra}

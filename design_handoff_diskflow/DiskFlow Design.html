@@ -25,6 +25,7 @@
   <script type="text/babel" src="design-canvas.jsx"></script>
   <script type="text/babel" src="hifi-shared.jsx"></script>
   <script type="text/babel" src="hifi-dashboard.jsx"></script>
+  <script type="text/babel" src="hifi-smart-cleanup.jsx"></script>
   <script type="text/babel" src="hifi-screens-1.jsx"></script>
   <script type="text/babel" src="hifi-screens-2.jsx"></script>
 
@@ -35,44 +36,50 @@
     function App() {
       return (
         <DesignCanvas>
-          <DCSection id="primary" title="01 · Primary Screens" subtitle="The four screens users will spend 90% of their time in.">
-            <DCArtboard id="dashboard" label="Dashboard · Overview" width={W} height={H}>
+          <DCSection id="primary" title="01 · 主要屏幕" subtitle="用户 90% 的时间会停留在这四屏。">
+            <DCArtboard id="dashboard" label="仪表盘 · 总览" width={W} height={H}>
               <HiFiDashboard />
             </DCArtboard>
-            <DCArtboard id="analyzer" label="Storage Analyzer · Sunburst drill-down" width={W} height={H}>
+            <DCArtboard id="smart-cleanup" label="智能清理中心 · “查看全部”跳转目标 ✨" width={W} height={H}>
+              <HiFiSmartCleanup />
+            </DCArtboard>
+            <DCArtboard id="analyzer" label="存储分析 · 旭日图钻取" width={W} height={H}>
               <HiFiAnalyzer />
             </DCArtboard>
-            <DCArtboard id="large-files" label="Large File Finder · Table + preview" width={W} height={H}>
+            <DCArtboard id="large-files" label="大文件查找 · 表格 + 预览" width={W} height={H}>
               <HiFiLargeFiles />
             </DCArtboard>
-            <DCArtboard id="duplicates" label="Duplicate Cleaner · Side-by-side" width={W} height={H}>
+            <DCArtboard id="duplicates" label="重复文件清理 · 左右对照" width={W} height={H}>
               <HiFiDuplicates />
             </DCArtboard>
           </DCSection>
 
-          <DCSection id="secondary" title="02 · Secondary Screens" subtitle="Memory monitor, app uninstaller, settings.">
-            <DCArtboard id="memory" label="Memory Monitor · Live RAM + processes" width={W} height={H}>
+          <DCSection id="secondary" title="02 · 次要屏幕" subtitle="内存监控、应用卸载、设置。">
+            <DCArtboard id="memory" label="内存监控 · 实时 RAM + 进程" width={W} height={H}>
               <HiFiMemory />
             </DCArtboard>
-            <DCArtboard id="apps" label="App Uninstaller · Grid + leftover data" width={W} height={H}>
+            <DCArtboard id="apps" label="应用卸载 · 网格 + 残留数据" width={W} height={H}>
               <HiFiApps />
             </DCArtboard>
-            <DCArtboard id="settings" label="Settings" width={W} height={H}>
+            <DCArtboard id="settings" label="设置" width={W} height={H}>
               <HiFiSettings />
             </DCArtboard>
           </DCSection>
 
-          <DCSection id="states" title="03 · States" subtitle="Empty, loading, success, error.">
-            <DCArtboard id="empty"   label="Empty · First run"        width={W} height={H}>
+          <DCSection id="states" title="03 · 状态屏" subtitle="点击「运行智能清理」→ 清理中过渡 → 完成。前后衔接的状态流。">
+            <DCArtboard id="empty"    label="空状态 · 首次启动"        width={W} height={H}>
               <HiFiEmpty />
             </DCArtboard>
-            <DCArtboard id="loading" label="Loading · Scanning"       width={W} height={H}>
+            <DCArtboard id="loading"  label="加载中 · 扫描中"           width={W} height={H}>
               <HiFiLoading />
             </DCArtboard>
-            <DCArtboard id="success" label="Success · Cleanup done"   width={W} height={H}>
+            <DCArtboard id="cleaning" label="清理中 · 过渡动画 ✨"       width={W} height={H}>
+              <HiFiCleaning />
+            </DCArtboard>
+            <DCArtboard id="success"  label="成功 · 清理完成"           width={W} height={H}>
               <HiFiSuccess />
             </DCArtboard>
-            <DCArtboard id="error"   label="Error · Permission needed" width={W} height={H}>
+            <DCArtboard id="error"    label="错误 · 需要权限"           width={W} height={H}>
               <HiFiError />
             </DCArtboard>
           </DCSection>

@@ -8,6 +8,20 @@ DiskFlow 是一款 macOS 桌面应用，帮助用户：可视化磁盘占用 · 
 
 **目标用户：** 高级用户、开发者、创作者、对存储敏感的 Mac 用户。
 
+**当前界面语言：简体中文（zh-CN）**，后续会扩展英文。设计文件中所有用户可见文案都已使用中文；字体栈以 `PingFang SC` 为首选，西文回落到 `SF Pro Display / Text`。
+
+### i18n 实施建议
+
+UI 文案应抽离为字符串表（i18n keys），不要硬编码在视图层。推荐结构：
+
+```
+locales/
+├── zh-CN.json        ← 当前设计的所有文案
+└── en.json           ← 之后加英文版本，键名与 zh-CN 一一对应
+```
+
+英文版本切换时只需改字体栈优先级（把 `SF Pro Display` 放到最前），无需改其他视觉规则。组件库（SwiftUI / React）按平台标准做 i18n 接入即可（SwiftUI：`String(localized:)` + `.strings` 文件；React：`react-i18next` 或 `@lingui/react`）。
+
 **设计语言：** 深色优先 · 毛玻璃 · 柔和霓虹蓝/青/紫渐变 · 遵循 Apple Human Interface Guidelines · 像 macOS 原生应用一样自然。
 
 ---
@@ -45,7 +59,7 @@ DiskFlow 是一款 macOS 桌面应用，帮助用户：可视化磁盘占用 · 
 
 文件 `DiskFlow Design.html` 中按章节组织：
 
-### 4.1 Primary（主要屏幕，4 张）
+### 4.1 Primary（主要屏幕，5 张）
 
 #### Dashboard · Overview （`dashboard`）
 - **目的**：用户开 App 第一眼看到的总览页
@@ -58,6 +72,25 @@ DiskFlow 是一款 macOS 桌面应用，帮助用户：可视化磁盘占用 · 
   - **Health Score 卡**：64px 大数字，从白色渐变到 cyan，蓝色光晕（`box-shadow: 0 0 60px -10px rgba(77,158,255,0.25)`）
   - **CTA 按钮**："Run smart cleanup" 用 primary 蓝色渐变 + 蓝色光晕
   - **Smart Cleanup 卡片**：分类色彩编码的渐变方块图标 + 标题 + 大额释放空间 + Review/Skip 按钮
+- **"查看全部"按钮** 跳转到 `smart-cleanup` 屏（见下）。
+
+#### 智能清理中心 · Smart Cleanup（`smart-cleanup`）✨
+
+- **目的**：Dashboard 上 Smart Cleanup 卡片右侧"查看全部 →"按钮的跳转目标。承载**所有** 8–12 项清理建议（不只首页那 3 项），支持分组浏览 + 细粒度多选 + 风险评级。
+- **路由**：`/smart-cleanup`，侧边栏新增独立入口（位于 Overview 之后，徽章显示总可释放量 `12.4 GB`）。
+- **布局**（1280 × 800）：
+  - 全局侧边栏 224px
+  - 左侧二级筛选栏 240px：顶部汇总（"19.6 GB · 共 6 类 · 260 项"）+ 分类列表（每类显示已选数 + 总数 + 大小）+ 底部安全保障说明卡
+  - 主区：标题 + 风险筛选 chips（全部 / 仅安全 / 需复核）+ 分组列表 + 底部浮动操作栏
+- **关键元素**：
+  - **风险徽章**（`<Risk level />`）三档：
+    - `safe` 绿色 · "安全" — 应用临时数据，可放心删除
+    - `normal` 蓝色 · "一般" — 一般情况安全，重新同步会重建
+    - `caution` 黄色 · "需复核" — 索引/项目数据，删除会影响下次使用速度
+  - **分组卡**：展开态显示表头（风险 · 项目 · 说明 · 最近访问 · 大小）+ 多行；折叠态只显示一行（图标+标题+一句话+大小+`›`）
+  - **项目行列结构**（grid-template-columns）：`32px 80px 32px 1fr 110px 110px 70px 24px` 对应 复选框 / 风险 / 图标 / 项目+路径 / 说明 / 最近访问 / 大小 / ⋯
+  - **底部浮动操作栏**：「已选中 N 项 · X.X GB」+ 颜色编码的风险统计「● 7 项安全 · ● 1 项一般」+「仅勾选安全项」快捷键 +「立即清理 X.X GB」CTA
+  - 点击「立即清理」→ 跳转 `cleaning` 过渡屏 → `success`
 
 #### Storage Analyzer · Sunburst （`analyzer`）
 - **目的**：层级化展示存储分布，支持钻取
@@ -103,14 +136,34 @@ DiskFlow 是一款 macOS 桌面应用，帮助用户：可视化磁盘占用 · 
 - 控件：自定义 toggle（蓝色渐变激活态）/ 下拉 / 状态徽章
 - 底部版本号 + Check for updates
 
-### 4.3 States（状态屏，4 张）
+### 4.3 States（状态屏，5 张 · 含清理过渡动画）
 
 | ID | 用途 | 关键视觉 |
 |---|---|---|
-| `empty`   | 首次启动 / 未扫描 | 120px 虚线圆 + 蓝色磁盘图标 + "Pick folders" / "Scan entire Mac" CTA |
-| `loading` | 扫描中 | 三层同心圆动画（外圈蓝渐变 68%，内圈青 + 紫片段）+ 进度条 + 实时计数器（Files indexed / Duplicate groups / Reclaimable） |
-| `success` | 清理完成 | 96px 绿色对勾圆 + 大号 "12.4 GB" 渐变文字 + 释放项列表 + 健康分变化（82 → 94） |
-| `error`   | 权限不足 | 88px 橙色盾牌图标 + 解释文案 + "Open System Settings" CTA + 已连接驱动列表（其中 Backup-SSD 标红） |
+| `empty`    | 首次启动 / 未扫描 | 120px 虚线圆 + 蓝色磁盘图标 + "Pick folders" / "Scan entire Mac" CTA |
+| `loading`  | 扫描中 | 三层同心圆动画（外圈蓝渐变 68%，内圈青 + 紫片段）+ 进度条 + 实时计数器 |
+| `cleaning` ✨ | **点击「运行智能清理」后到「清理完成」之间的过渡动画屏** | 中央 48px 渐变文字 "已释放 8.4 GB / 共 12.4 GB" + 三层旋转粒子轨道 + 任务列表（已完成 / 进行中 / 排队中三种状态） |
+| `success`  | 清理完成 | 96px 绿色对勾圆 + 大号 "12.4 GB" 渐变文字 + 释放项列表 + 健康分变化（82 → 94） |
+| `error`    | 权限不足 | 88px 橙色盾牌图标 + 解释文案 + "Open System Settings" CTA + 已连接驱动列表 |
+
+#### Cleaning 过渡屏实现要点
+
+**这一屏的关键是让用户感受到"事情正在发生"，避免从 Dashboard 点 CTA → 突然弹出 Success 的生硬感。**
+
+视觉构成：
+1. **背景渐变光晕**（呼吸动画，3s 周期）：`radial-gradient(circle, rgba(77,158,255,0.28), transparent 70%)` + `animation: pulse 3s ease-in-out infinite`
+2. **三层同心轨道环**：圆形 1px border-radius:50% 边框，每层以不同方向 + 时长旋转（外圈 18s / 中圈 13s 反向 / 内圈 8s）。每个环上挂一个发光小球。
+3. **5 个漂浮粒子**：用 `transform: rotate() translateX(var(--orbit-r)) rotate()` 实现 CSS-only 公转，半径 70–110px，色彩交替（blue / cyan / purple）
+4. **中央数字**：使用与 Dashboard 健康分相同的 `linear-gradient(180deg, #fff, var(--blue-hi), var(--cyan))` + `background-clip: text`，配 tabular-nums 数字
+5. **任务列表**三态：
+   - **done** ✓：绿色对勾圆 + 100% 进度条 + 绿色数值 + 文字 "✓ 完成"
+   - **running**：蓝色旋转圆环图标 + 流动光斑进度条（`@keyframes shimmer`）+ 卡片蓝色光晕 `box-shadow`
+   - **queued**：虚线序号圆 + 0% 进度条 + 卡片整体 opacity:0.55
+
+转场建议（开发实现）：
+- 从 Dashboard 点击「运行智能清理」按钮 → 当前页面 `opacity` 渐隐 200ms → 路由切换 → Cleaning 屏从 `scale(0.96)` 渐入 300ms
+- Cleaning → Success 转场：当所有任务 done 后，中央"已释放 X GB"的数字继续展示，同时圆环动画停止 + 颜色从蓝色渐变到绿色（800ms），再切换到 Success 页
+- macOS 平台用 `withAnimation(.easeOut(duration: 0.3))` 或 `matchedGeometryEffect`
 
 ---
 
@@ -199,8 +252,10 @@ DiskFlow 是一款 macOS 桌面应用，帮助用户：可视化磁盘占用 · 
 ### 字体 Typography
 
 ```
-font-family: -apple-system, "SF Pro Display", "SF Pro Text", BlinkMacSystemFont, system-ui, sans-serif;
-font-mono:   "SF Mono", ui-monospace, "JetBrains Mono", Menlo, monospace;
+/* 中文优先（当前主语言），英文回落到 SF Pro */
+font-family: -apple-system, "SF Pro Display", "SF Pro Text", BlinkMacSystemFont,
+             "PingFang SC", "Helvetica Neue", "Microsoft YaHei", system-ui, sans-serif;
+font-mono:   "SF Mono", ui-monospace, "JetBrains Mono", Menlo, "PingFang SC", monospace;
 
 /* Scale */
 h1: 24px / 700 / -0.02em
@@ -214,6 +269,9 @@ mono: tabular-nums
 display: 56–64px / 700 / -0.04em
 gradient text: linear-gradient(180deg, #fff, var(--blue-hi) 60%, var(--cyan))
 ```
+
+> ⚠️ 中文不需要 `letter-spacing`（容易显得松散）。设计中只在英文/数字/大字号场景使用负字距。
+> 当切到英文界面时，把 `SF Pro Display` 提到字体栈最前即可。
 
 ### 间距 Spacing（8pt 网格）
 

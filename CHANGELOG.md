@@ -2,6 +2,59 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，版本号采用 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.8.2] — 2026-05-26 — DiskFlow Sprint 1 收尾
+
+补齐 Sprint 1 剩下的部分（Settings + 4 个 States）+ 接入 i18n 字符串系统，所有新文案改用语义 key。
+
+### 新增
+
+**4 个状态屏视图组件**（`DiskCleaner/Design/StateViews.swift`）
+
+- `EmptyStateView` — 120pt 虚线圆 + 蓝色磁盘图标 + 「选择文件夹…」/「扫描整个 Mac」双 CTA + 安全提示
+- `LoadingStateView` — 3 层同心圆（外蓝主进度 / 中青 / 内紫）+ 中央百分比 + 渐变进度条 + 3 个统计卡（已索引 / 重复组 / 可回收）
+- `SuccessStateView` — 96pt 绿勾圆 + 56pt 「已释放」渐变数字 + 释放项列表（每行 ✓+名称+大小）+ 健康分变化卡（82 → 94, +12）
+- `ErrorStateView` — 88pt 橙盾圆角矩形 + 文案 + 「打开系统设置」+ 已连接驱动器列表（其中 Backup-SSD 标红）
+
+**DesignButton + DesignToggle**
+
+- `DesignButton`（default / primary / ghost / danger × standard / small）：primary 带蓝色光晕，匹配 §6 token
+- `DesignToggle`：34×20 蓝色渐变激活态，匹配设计稿的 `HiFiSettings.Toggle`
+
+**SettingsScreen 重设计**（替代旧 5-tab `SettingsView`）
+
+- 单页 ScrollView，最大宽 760pt 居中
+- 4 段卡片：扫描 / 清理 / 通知 / 高级
+- 控件类型：DesignToggle（reminder）/ Menu 风格 value cell（默认扫描位置 / 频率 / 阈值 / 语言）/ 状态徽章（FDA "已授权"）/ ghost button + chevron（管理）
+- 底部 footer：版本/系统/架构 + 「检查更新」+「关于」按钮
+- 排除路径与自定义规则的 CRUD 走 sheet（保留原 CRUD 逻辑），不再占满整页
+- 旧 `SettingsView.swift` 已删除
+
+**Settings 改为 Feature 项**
+
+- `Feature` 枚举新增 `.settings`，归在侧栏 SYSTEM 段
+- `DesignSidebar` 把原来 hardcode 的 `settingsRow` 改回普通 nav row（systemItems 参数回归）
+- `DiskCleanerApp` 移除独立的 `Settings { SettingsView() }` Scene；`Cmd+,` 现在设 `selection = .settings`，inline 切到 SettingsScreen
+
+### 改动
+
+**i18n 字符串系统**
+
+- `Localizable.xcstrings` 新增 87 条语义 key（`sidebar.*` / `toolbar.*` / `feature.*` / `state.*` / `settings.*` / `frequency.*` / `scan_root.*` / `language.*` 等），每条都同时给 zh-Hans 和 en 翻译
+- 总字符串条目从 138 增至 242
+- 所有新 chrome 文件改用 `Text(LocalizedStringKey(keyString))` 解析，不再硬编码英文/中文
+- `Feature.title` → `Feature.titleKey`（返回 i18n key 字符串）
+- `DesignNavItem.label` → `DesignNavItem.labelKey`
+- `DesignToolbar.placeholder` → `placeholderKey`
+- `ComingSoonView.title` → `titleKey: LocalizedStringKey`
+- `CommandMenu` 全部菜单项走 i18n
+- 中文系统下看到的全部是中文（之前是英文 hardcode）
+
+### 不在本次范围
+
+- 把已有 detail views（DiskMapView / DuplicatesView / 等）的字符串也迁到 i18n key —— 等各视图按 DiskFlow 设计重做时一并处理
+- Cleaning 过渡屏（README §4.3 新增的那个）—— 留到 Sprint 2 与 Smart Cleanup 一起做
+- 字体栈不需要改动：SwiftUI `Font.system()` 在 macOS 上对 CJK 自动选 PingFang SC、对拉丁选 SF Pro，开箱即用
+
 ## [0.8.0] — 2026-05-26 — DiskFlow Redesign · Sprint 1
 
 接入 `design_handoff_diskflow` 的新视觉系统。Sprint 1 目标：Frame + Sidebar + Toolbar 三个全局组件 + 设计令牌系统。

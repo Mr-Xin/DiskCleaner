@@ -3,8 +3,11 @@
 //  DiskCleaner
 //
 //  SwiftUI application entry point. Owns the top-level feature selection so
-//  menu commands and keyboard shortcuts can drive it, and registers the
-//  Settings scene.
+//  menu commands and keyboard shortcuts can drive it.
+//
+//  Settings is no longer a separate `Settings` scene — it's an inline
+//  `.settings` Feature. Cmd+, sets `selection = .settings` rather than
+//  opening a new window. (Closer to the DiskFlow design intent.)
 //
 
 import SwiftUI
@@ -28,30 +31,33 @@ struct DiskCleanerApp: App {
         .windowStyle(.titleBar)
         .windowToolbarStyle(.unified)
         .commands {
-            CommandMenu("Features") {
-                Button("Overview")     { selection = .overview }
-                    .keyboardShortcut("1")
-                Button("Storage")      { selection = .storage }
-                    .keyboardShortcut("2")
-                Button("Large Files")  { selection = .largeFiles }
-                    .keyboardShortcut("3")
-                Button("Duplicates")   { selection = .duplicates }
-                    .keyboardShortcut("4")
-                Button("Applications") { selection = .applications }
-                    .keyboardShortcut("5")
-                Button("Memory")       { selection = .memory }
-                    .keyboardShortcut("6")
-                Button("External")     { selection = .external }
-                    .keyboardShortcut("7")
+            CommandMenu(LocalizedStringKey("command.menu.features")) {
+                featureButton(.overview,     shortcut: "1")
+                featureButton(.storage,      shortcut: "2")
+                featureButton(.largeFiles,   shortcut: "3")
+                featureButton(.duplicates,   shortcut: "4")
+                featureButton(.applications, shortcut: "5")
+                featureButton(.memory,       shortcut: "6")
+                featureButton(.external,     shortcut: "7")
                 Divider()
-                Button("Junk Cleaning")    { selection = .junk }
-                Button("Scan History")     { selection = .history }
-                Button("Recent Activity")  { selection = .activity }
+                featureButton(.junk)
+                featureButton(.history)
+                featureButton(.activity)
+                Divider()
+                featureButton(.settings,     shortcut: ",")
             }
         }
+    }
 
-        Settings {
-            SettingsView()
+    private func featureButton(
+        _ feature: Feature,
+        shortcut: KeyEquivalent? = nil
+    ) -> some View {
+        Button {
+            selection = feature
+        } label: {
+            Text(LocalizedStringKey(feature.titleKey))
         }
+        .keyboardShortcut(shortcut.map { KeyboardShortcut($0) })
     }
 }

@@ -2,9 +2,9 @@
 //  ContentView.swift
 //  DiskCleaner
 //
-//  The application shell — now wraps everything in the DiskFlow `DesignFrame`
-//  with the new `DesignSidebar` + `DesignToolbar`. Detail views remain the
-//  existing implementations; they'll be visually re-skinned in later sprints.
+//  The application shell — wraps everything in the DiskFlow `DesignFrame`
+//  with the new `DesignSidebar` + `DesignToolbar`. Settings is now a regular
+//  sidebar Feature (`.settings`), routed to `SettingsScreen` inline.
 //
 
 import SwiftUI
@@ -13,7 +13,7 @@ import DiskCleanerCore
 
 /// Top-level features of the app. Order and ids align with the DiskFlow
 /// sidebar in `design_handoff_diskflow/hifi-shared.jsx :: SIDE_ITEMS`, plus
-/// DiskCleaner's own extras (`junk` / `history` / `activity`) tacked on.
+/// DiskCleaner's own extras and a `.settings` item under SYSTEM.
 enum Feature: String, CaseIterable, Identifiable {
     // DiskFlow workspace items
     case overview
@@ -29,35 +29,42 @@ enum Feature: String, CaseIterable, Identifiable {
     case history
     case activity
 
+    // System
+    case settings
+
     var id: String { rawValue }
 
-    var title: String {
+    /// i18n key resolved via `Localizable.xcstrings`. Use with
+    /// `Text(LocalizedStringKey(feature.titleKey))`.
+    var titleKey: String {
         switch self {
-        case .overview:     "Overview"
-        case .storage:      "Storage"
-        case .largeFiles:   "Large Files"
-        case .duplicates:   "Duplicates"
-        case .applications: "Applications"
-        case .memory:       "Memory"
-        case .external:     "External"
-        case .junk:         "Junk Cleaning"
-        case .history:      "Scan History"
-        case .activity:     "Recent Activity"
+        case .overview:     return "feature.overview"
+        case .storage:      return "feature.storage"
+        case .largeFiles:   return "feature.large_files"
+        case .duplicates:   return "feature.duplicates"
+        case .applications: return "feature.applications"
+        case .memory:       return "feature.memory"
+        case .external:     return "feature.external"
+        case .junk:         return "feature.junk"
+        case .history:      return "feature.history"
+        case .activity:     return "feature.activity"
+        case .settings:     return "feature.settings"
         }
     }
 
     var systemImage: String {
         switch self {
-        case .overview:     "square.grid.2x2"
-        case .storage:      "internaldrive"
-        case .largeFiles:   "doc"
-        case .duplicates:   "doc.on.doc"
-        case .applications: "square.grid.3x3"
-        case .memory:       "cpu"
-        case .external:     "externaldrive"
-        case .junk:         "trash"
-        case .history:      "chart.line.uptrend.xyaxis"
-        case .activity:     "clock.arrow.circlepath"
+        case .overview:     return "square.grid.2x2"
+        case .storage:      return "internaldrive"
+        case .largeFiles:   return "doc"
+        case .duplicates:   return "doc.on.doc"
+        case .applications: return "square.grid.3x3"
+        case .memory:       return "cpu"
+        case .external:     return "externaldrive"
+        case .junk:         return "trash"
+        case .history:      return "chart.line.uptrend.xyaxis"
+        case .activity:     return "clock.arrow.circlepath"
+        case .settings:     return "gearshape"
         }
     }
 }
@@ -68,12 +75,6 @@ struct ContentView: View {
     @State private var hasFullDiskAccess: Bool
     @State private var showOnboarding: Bool
     @State private var searchText: String = ""
-
-    @AppStorage(AppSettings.appLanguageKey)
-    private var appLanguage: AppLanguage = AppSettings.appLanguageDefault
-    @State private var showLanguageRestartAlert = false
-
-    @Environment(\.openSettings) private var openSettings
 
     init(selection: Binding<Feature?>) {
         self._selection = selection
@@ -91,12 +92,6 @@ struct ContentView: View {
             )
         } else {
             mainView
-                .alert("语言已更改", isPresented: $showLanguageRestartAlert) {
-                    Button("立即重启") { relaunchApp() }
-                    Button("稍后", role: .cancel) {}
-                } message: {
-                    Text("退出后再次打开 DiskCleaner，新语言才会生效。")
-                }
         }
     }
 
@@ -107,7 +102,7 @@ struct ContentView: View {
             VStack(spacing: 0) {
                 DesignToolbar(
                     searchText: $searchText,
-                    placeholder: "Search files, apps, caches…",
+                    placeholderKey: "toolbar.search.placeholder",
                     onRefresh: {},
                     onNotifications: {}
                 )
@@ -123,6 +118,7 @@ struct ContentView: View {
         let usage = Self.mainVolumeUsage()
         return DesignSidebar(
             workspaceItems: workspaceItems,
+            systemItems: systemItems,
             selection: Binding(
                 get: { selection?.rawValue },
                 set: { newID in
@@ -131,24 +127,36 @@ struct ContentView: View {
                     }
                 }
             ),
-            onSettingsTap: { openSettings() },
             brandName: "DiskFlow",
             storageVolume: usage.label,
-            storageHealth: "Healthy",
             storageUsedBytes: usage.used,
             storageFreeBytes: usage.free,
             storageBreakdown: Self.placeholderBreakdown()
         )
     }
 
+    /// Features that go under the WORKSPACE section (everything except
+    /// `.settings`, which lives under SYSTEM).
     private var workspaceItems: [DesignNavItem] {
-        Feature.allCases.map { feature in
+        Feature.allCases
+            .filter { $0 != .settings }
+            .map { feature in
+                DesignNavItem(
+                    id: feature.rawValue,
+                    labelKey: feature.titleKey,
+                    systemImage: feature.systemImage
+                )
+            }
+    }
+
+    private var systemItems: [DesignNavItem] {
+        [
             DesignNavItem(
-                id: feature.rawValue,
-                label: feature.title,
-                systemImage: feature.systemImage
+                id: Feature.settings.rawValue,
+                labelKey: Feature.settings.titleKey,
+                systemImage: Feature.settings.systemImage
             )
-        }
+        ]
     }
 
     // MARK: - Detail routing
@@ -157,7 +165,7 @@ struct ContentView: View {
     private var detailView: some View {
         switch selection ?? .storage {
         case .overview:
-            ComingSoonView(title: "Overview",  systemImage: "square.grid.2x2", plannedSprint: "Sprint 2")
+            ComingSoonView(titleKey: "feature.overview",  systemImage: "square.grid.2x2",       plannedSprint: "Sprint 2")
         case .storage:
             DiskMapView()
         case .largeFiles:
@@ -167,15 +175,17 @@ struct ContentView: View {
         case .applications:
             UninstallView()
         case .memory:
-            ComingSoonView(title: "Memory",    systemImage: "cpu",            plannedSprint: "Sprint 6")
+            ComingSoonView(titleKey: "feature.memory",    systemImage: "cpu",                   plannedSprint: "Sprint 6")
         case .external:
-            ComingSoonView(title: "External Drives", systemImage: "externaldrive", plannedSprint: "later")
+            ComingSoonView(titleKey: "feature.external",  systemImage: "externaldrive",         plannedSprint: "later")
         case .junk:
             JunkCleaningView()
         case .history:
             HistoryView()
         case .activity:
             AuditLogView()
+        case .settings:
+            SettingsScreen()
         }
     }
 
@@ -209,17 +219,6 @@ struct ContentView: View {
             .init(color: DesignTokens.Palette.catSystem, percent: 0.07),
             .init(color: DesignTokens.Palette.catCache,  percent: 0.04)
         ]
-    }
-
-    // MARK: - Misc
-
-    private func relaunchApp() {
-        let bundleURL = Bundle.main.bundleURL
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-        process.arguments = ["-n", bundleURL.path]
-        try? process.run()
-        NSApplication.shared.terminate(nil)
     }
 }
 

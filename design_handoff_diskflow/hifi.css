@@ -64,9 +64,11 @@
   --r-2xl: 22px;
   --r-pill: 999px;
 
-  /* === Type === */
-  --font-ui: -apple-system, "SF Pro Display", "SF Pro Text", BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
-  --font-mono: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, monospace;
+  /* === Type ===
+     CJK 优先用 PingFang SC（macOS 原生中文字体），西文回落到 SF Pro。
+     之后接入英文 i18n 时不需要改字体栈。 */
+  --font-ui: -apple-system, "SF Pro Display", "SF Pro Text", BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", "Microsoft YaHei", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, "PingFang SC", monospace;
 }
 
 /* ============ FRAME (mac window) ============ */
@@ -632,6 +634,79 @@ body { background: #0a0d14; }
   fill: none;
   stroke: rgba(255,255,255,0.04);
   stroke-width: 1;
+}
+
+/* ============ 清理中动画 CLEANING TRANSITION ============ */
+
+@keyframes df-spin     { to { transform: rotate(360deg); } }
+@keyframes df-spin-rev { to { transform: rotate(-360deg); } }
+@keyframes df-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.06); }
+}
+@keyframes df-orbit-particle {
+  from { transform: rotate(0deg) translateX(var(--orbit-r, 90px)) rotate(0deg); }
+  to   { transform: rotate(360deg) translateX(var(--orbit-r, 90px)) rotate(-360deg); }
+}
+@keyframes df-bar-flow {
+  0%   { background-position: 0 0; }
+  100% { background-position: 60px 0; }
+}
+@keyframes df-shimmer {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(220%); }
+}
+@keyframes df-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes df-blink {
+  0%, 60% { opacity: 1; }
+  80%     { opacity: 0.3; }
+}
+
+.df-orbit-ring {
+  position: absolute;
+  border-radius: 50%;
+  border: 1px solid rgba(255,255,255,0.08);
+}
+.df-orbit-particle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 8px; height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  animation: df-orbit-particle 8s linear infinite;
+}
+
+/* Animated progress bar (flowing diagonal stripes) */
+.df-bar.flow > i {
+  background-image:
+    linear-gradient(90deg, var(--blue), var(--cyan)),
+    repeating-linear-gradient(45deg,
+      rgba(255,255,255,0.18) 0 8px,
+      transparent 8px 16px);
+  background-blend-mode: overlay;
+  background-size: 100% 100%, 60px 100%;
+  animation: df-bar-flow 1.2s linear infinite;
+  position: relative;
+  overflow: hidden;
+}
+.df-bar.flow > i::after {
+  content: '';
+  position: absolute; inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.4) 50%, transparent 100%);
+  animation: df-shimmer 1.8s ease-in-out infinite;
+}
+
+/* Status row blinking dot */
+.df-status-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--blue);
+  box-shadow: 0 0 8px var(--blue);
+  animation: df-blink 1.4s ease-in-out infinite;
 }
 
 /* tooltip */

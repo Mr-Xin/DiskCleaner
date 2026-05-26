@@ -12,7 +12,8 @@ import SwiftUI
 struct DesignToolbar<Trailing: View>: View {
 
     @Binding var searchText: String
-    let placeholder: String
+    /// Placeholder text — i18n key resolved via `LocalizedStringKey`.
+    let placeholderKey: String
     let onRefresh: () -> Void
     let onNotifications: () -> Void
 
@@ -20,13 +21,13 @@ struct DesignToolbar<Trailing: View>: View {
 
     init(
         searchText: Binding<String>,
-        placeholder: String = "Search files, apps, caches…",
+        placeholderKey: String = "toolbar.search.placeholder",
         onRefresh: @escaping () -> Void = {},
         onNotifications: @escaping () -> Void = {},
         @ViewBuilder trailingActions: @escaping () -> Trailing = { EmptyView() }
     ) {
         self._searchText = searchText
-        self.placeholder = placeholder
+        self.placeholderKey = placeholderKey
         self.onRefresh = onRefresh
         self.onNotifications = onNotifications
         self.trailingActions = trailingActions
@@ -58,9 +59,9 @@ struct DesignToolbar<Trailing: View>: View {
                 .font(.system(size: 12))
                 .foregroundStyle(DesignTokens.Palette.text3)
             TextField(
-                placeholder,
+                LocalizedStringKey(placeholderKey),
                 text: $searchText,
-                prompt: Text(placeholder)
+                prompt: Text(LocalizedStringKey(placeholderKey))
                     .foregroundStyle(DesignTokens.Palette.text3)
             )
             .textFieldStyle(.plain)
