@@ -629,11 +629,92 @@ body { background: #0a0d14; }
   overflow: hidden;
 }
 
-/* sunburst hover ring */
-.df-sun-ring {
-  fill: none;
-  stroke: rgba(255,255,255,0.04);
-  stroke-width: 1;
+/* ============ LIGHT MODE 浅色模式 ============
+   切换 .df-light 即可整体切换为浅色（macOS Light）。
+   仅覆盖语义变量，组件结构不变。 */
+
+.df-light {
+  --bg-0: #ebe9e3;
+  --bg-1: #f6f4ef;
+  --bg-2: #ffffff;
+  --bg-3: #ffffff;
+
+  --glass-1: rgba(0,0,0,0.025);
+  --glass-2: rgba(0,0,0,0.04);
+  --glass-3: rgba(0,0,0,0.06);
+  --glass-hi: rgba(0,0,0,0.1);
+
+  --line-1: rgba(0,0,0,0.08);
+  --line-2: rgba(0,0,0,0.13);
+  --line-3: rgba(0,0,0,0.2);
+
+  --t-1: #1a1f2c;
+  --t-2: #46506b;
+  --t-3: #6b7691;
+  --t-4: #98a1b3;
+
+  --blue:    #2e7ce5;
+  --blue-hi: #1c64d0;
+  --cyan:    #00a7c2;
+  --purple:  #7259e0;
+  --pink:    #c25fb8;
+
+  --good: #2e9f6a;
+  --warn: #d68b2a;
+  --danger: #d04156;
+}
+
+/* Light mode 的 frame 背景换成柔和暖白渐变 */
+.df-light .df {
+  background-image:
+    radial-gradient(900px 600px at 12% -10%, rgba(46,124,229,0.10), transparent 60%),
+    radial-gradient(700px 500px at 110% 10%, rgba(114,89,224,0.08), transparent 55%),
+    radial-gradient(800px 600px at 50% 120%, rgba(0,167,194,0.06), transparent 60%),
+    linear-gradient(180deg, #f6f4ef 0%, #ebe9e3 100%);
+}
+.df-light .df-titlebar { background: rgba(255,255,255,0.65); }
+.df-light .df-sidebar  { background: rgba(255,255,255,0.5); }
+.df-light .df-toolbar  { background: rgba(255,255,255,0.4); }
+.df-light .df-faction  { background: rgba(255,255,255,0.85); }
+.df-light .df-card     { background: rgba(255,255,255,0.65); }
+.df-light .df-card.elevated { background: #ffffff; box-shadow: 0 4px 16px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04); }
+.df-light .df-brand-text { color: var(--t-1); }
+.df-light .df-search { background: #fff; }
+.df-light .df-btn { background: #fff; color: var(--t-1); }
+.df-light .df-btn.primary {
+  background: linear-gradient(180deg, var(--blue), var(--blue-hi));
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(46,124,229,0.3), inset 0 1px 0 rgba(255,255,255,0.2);
+}
+
+/* ============ MODAL / DIALOG 弹窗 ============ */
+
+.df-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(7,9,13,0.6);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: grid;
+  place-items: center;
+  z-index: 50;
+}
+.df-light .df-modal-backdrop { background: rgba(120,118,110,0.4); }
+
+.df-modal {
+  background: rgba(22,28,39,0.92);
+  border: 1px solid var(--line-3);
+  border-radius: var(--r-xl);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.6), 0 0 80px rgba(77,158,255,0.1);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  width: 440px;
+  padding: 24px;
+}
+.df-light .df-modal {
+  background: #ffffff;
+  border-color: rgba(0,0,0,0.1);
+  box-shadow: 0 30px 80px rgba(0,0,0,0.18);
 }
 
 /* ============ 清理中动画 CLEANING TRANSITION ============ */

@@ -184,6 +184,23 @@ extension DashboardSnapshot {
 struct DashboardView: View {
 
     @State private var snapshot: DashboardSnapshot = .placeholder()
+    /// Shared scan store. When non-nil and scanned, its data replaces the
+    /// snapshot's placeholder reclaim numbers + suggestion cards.
+    let store: JunkScanStore?
+    /// Tapped from the Health Score card's "Run smart cleanup" primary CTA.
+    var onRunSmartCleanup: () -> Void = {}
+    /// Tapped from the Smart Cleanup section's "查看全部 →" ghost button.
+    var onViewAllSuggestions: () -> Void = {}
+
+    init(
+        store: JunkScanStore? = nil,
+        onRunSmartCleanup: @escaping () -> Void = {},
+        onViewAllSuggestions: @escaping () -> Void = {}
+    ) {
+        self.store = store
+        self.onRunSmartCleanup = onRunSmartCleanup
+        self.onViewAllSuggestions = onViewAllSuggestions
+    }
 
     var body: some View {
         ScrollView(.vertical, showsIndicators: false) {
@@ -196,6 +213,65 @@ struct DashboardView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color.clear)
+        .task {
+            // Background scan on first appearance — Dashboard quietly
+            // upgrades from placeholders to real numbers when ready.
+            await store?.ensureScanned()
+        }
+        .task {
+            // Sample memory once on appear so the mini card shows live data
+            // without spinning up the polling timer that Memory Monitor uses.
+            if let sample = readMemorySampleOnce() {
+                snapshot.memoryEnabled = true
+                snapshot.memoryTotalBytes = Int64(sample.totalBytes)
+                snapshot.memoryUsedBytes = Int64(sample.usedBytes)
+            }
+        }
+    }
+
+    /// Reclaimable bytes from real scan when available, otherwise the
+    /// snapshot's placeholder value.
+    private var effectiveReclaimableBytes: Int64 {
+        if let s = store, s.hasScanned {
+            return s.totalReclaimableBytes
+        }
+        return snapshot.reclaimableBytes
+    }
+
+    private var effectiveQuickWinsCount: Int {
+        if let s = store, s.hasScanned {
+            return s.totalItemCount
+        }
+        return snapshot.quickWinsCount
+    }
+
+    /// Top-3 categories by bytes once we have a real scan; otherwise the
+    /// snapshot's three placeholder cards.
+    private var effectiveSuggestions: [DashboardSuggestion] {
+        guard let s = store, s.hasScanned else { return snapshot.suggestions }
+        let categories = s.categories
+            .filter { !$0.items.isEmpty && $0.items.contains(where: { $0.url != nil }) }
+            .sorted { lhs, rhs in
+                let l = lhs.items.reduce(Int64(0)) { $0 + $1.bytes }
+                let r = rhs.items.reduce(Int64(0)) { $0 + $1.bytes }
+                return l > r
+            }
+            .prefix(3)
+        guard !categories.isEmpty else { return snapshot.suggestions }
+        return categories.map { cat in
+            let bytes = cat.items.reduce(Int64(0)) { $0 + $1.bytes }
+            let topItem = cat.items
+                .filter { $0.url != nil }
+                .max(by: { $0.bytes < $1.bytes })
+            return DashboardSuggestion(
+                tagKey: cat.titleKey,
+                titleKey: LocalizedStringKey(topItem?.name ?? cat.titleDisplay),
+                descKey: cat.summaryKey,
+                bytes: bytes,
+                glyph: cat.glyph,
+                code: String((topItem?.name ?? cat.titleDisplay).prefix(3)).uppercased()
+            )
+        }
     }
 
     // MARK: Greeting
@@ -450,8 +526,8 @@ struct DashboardView: View {
 
                 Text(verbatim: String(
                     format: NSLocalizedString("dashboard.health.summary", comment: ""),
-                    snapshot.quickWinsCount,
-                    ByteSizeFormatter.short(snapshot.reclaimableBytes)
+                    effectiveQuickWinsCount,
+                    ByteSizeFormatter.short(effectiveReclaimableBytes)
                 ))
                     .font(.system(size: 12.5))
                     .foregroundStyle(DesignTokens.Palette.text2)
@@ -576,8 +652,8 @@ struct DashboardView: View {
                         .foregroundStyle(DesignTokens.Palette.text1)
                     Text(verbatim: String(
                         format: NSLocalizedString("dashboard.smart.summary", comment: ""),
-                        snapshot.quickWinsCount,
-                        ByteSizeFormatter.short(snapshot.reclaimableBytes)
+                        effectiveQuickWinsCount,
+                        ByteSizeFormatter.short(effectiveReclaimableBytes)
                     ))
                         .font(.system(size: 12))
                         .foregroundStyle(DesignTokens.Palette.text3)
@@ -593,7 +669,7 @@ struct DashboardView: View {
             }
 
             HStack(alignment: .top, spacing: 12) {
-                ForEach(snapshot.suggestions) { s in
+                ForEach(effectiveSuggestions) { s in
                     suggestionCard(s)
                         .frame(maxWidth: .infinity)
                 }
@@ -643,11 +719,11 @@ struct DashboardView: View {
         }
     }
 
-    // MARK: Actions (stubs — wired in later Sprints)
+    // MARK: Actions
 
-    private func runSmartCleanup()       { /* Sprint 2.5: route to /smart-cleanup */ }
-    private func viewAllSuggestions()    { /* Sprint 2.5: route to /smart-cleanup */ }
-    private func reviewSuggestion(_ s: DashboardSuggestion) { /* TBD */ }
+    private func runSmartCleanup()    { onRunSmartCleanup() }
+    private func viewAllSuggestions() { onViewAllSuggestions() }
+    private func reviewSuggestion(_ s: DashboardSuggestion) { onViewAllSuggestions() }
     private func skipSuggestion(_ s: DashboardSuggestion)   { /* TBD */ }
 }
 

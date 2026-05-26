@@ -2,8 +2,22 @@
 //  DiskMapView.swift
 //  DiskCleaner
 //
-//  Feature 1 — disk space visualization: scan a folder and explore it as a
-//  treemap plus a size-ordered breakdown list.
+//  Sprint 3 — Storage Analyzer. Wraps the existing treemap engine in the
+//  DiskFlow chrome:
+//
+//    ┌──────────────────────────────────────┬────────────────────────┐
+//    │                                      │ Breadcrumb            │
+//    │                                      │ ─────────────────     │
+//    │   Treemap canvas (1.4fr)             │ Breakdown list (top   │
+//    │                                      │   6 children w/ bars) │
+//    │                                      │ ─────────────────     │
+//    │                                      │ ✨ Insight card        │
+//    │                                      │ Clean X GB CTA        │
+//    └──────────────────────────────────────┴────────────────────────┘
+//
+//  Sunburst is intentionally swapped out for the existing squarified
+//  treemap (README §10 explicitly allows this) — the redesign focuses on
+//  visual polish and the right-panel narrative.
 //
 
 import SwiftUI
@@ -167,6 +181,32 @@ final class DiskMapViewModel {
         NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/System Settings.app"))
     }
 
+    // MARK: - Breadcrumb
+
+    /// Path from `tree` root → `currentNode`, used by the right panel.
+    var breadcrumb: [FileNode] {
+        guard let current = currentNode else { return [] }
+        var path: [FileNode] = []
+        var cur: FileNode? = current
+        while let n = cur {
+            path.insert(n, at: 0)
+            cur = n.parent
+        }
+        return path
+    }
+
+    /// Top children by size for the right panel's breakdown list.
+    func topChildren(limit: Int = 6) -> [FileNode] {
+        guard let node = currentNode else { return [] }
+        return Array(node.childrenBySize.prefix(limit))
+    }
+
+    /// Selected node (if any), used to enable the right-panel "Clean" CTA.
+    var selectedNode: FileNode? {
+        guard let id = selectedNodeID, let node = currentNode else { return nil }
+        return node.childrenBySize.first { $0.id == id }
+    }
+
     // MARK: - Last-used scan root
 
     private func lastUsedScanRoot() -> URL? {
@@ -189,45 +229,70 @@ struct DiskMapView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-            Divider()
+            actionBar
+            Divider().background(DesignTokens.Palette.line1)
             content
         }
-        .navigationTitle("磁盘空间可视化")
     }
 
-    private var header: some View {
+    // MARK: Action bar
+
+    private var actionBar: some View {
         HStack(spacing: 10) {
-            Button { model.chooseFolder() } label: {
-                Label("选择文件夹", systemImage: "folder")
+            DesignButton(.default, size: .small, action: { model.chooseFolder() }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "folder")
+                    Text("storage.action.choose_folder")
+                }
             }
-            Button { model.scanDefault() } label: {
-                Label("扫描默认位置", systemImage: "house")
+            DesignButton(.ghost, size: .small, action: { model.scanDefault() }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "house")
+                    Text("storage.action.scan_default")
+                }
             }
-            Button { model.navigateUp() } label: {
-                Label("上一级", systemImage: "arrow.up")
+            if model.currentNode?.parent != nil {
+                DesignButton(.ghost, size: .small, action: { model.navigateUp() }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.up")
+                        Text("storage.action.up")
+                    }
+                }
             }
-            .disabled(model.currentNode?.parent == nil)
-
+            if model.tree != nil && !model.isScanning {
+                DesignButton(.ghost, size: .small, action: { model.rescan() }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "arrow.clockwise")
+                        Text("storage.action.rescan")
+                    }
+                }
+            }
             Spacer()
-
             if let node = model.currentNode {
-                Text(node.name)
-                    .lineLimit(1)
-                    .foregroundStyle(.secondary)
-                Text(ByteSize.formatted(node.allocatedSize))
-                    .fontWeight(.medium)
-                    .monospacedDigit()
+                DesignChip {
+                    Text(verbatim: node.name)
+                }
+                Text(verbatim: ByteSize.formatted(node.allocatedSize))
+                    .font(.system(size: 13, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(DesignTokens.Palette.text1)
             }
         }
-        .padding(10)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 10)
         .disabled(model.isScanning)
     }
 
     @ViewBuilder
     private var content: some View {
         if model.isScanning {
-            scanningView
+            LoadingStateView(
+                percent: 0,
+                itemsIndexed: model.scanProgress?.scannedItemCount ?? 0,
+                duplicateGroups: 0,
+                reclaimableBytes: model.scanProgress?.bytesScanned ?? 0,
+                currentPath: model.scanProgress?.currentPath ?? "",
+                onCancel: { model.cancelScan() }
+            )
         } else if let error = model.lastError {
             errorView(error)
         } else if let node = model.currentNode {
@@ -240,61 +305,233 @@ struct DiskMapView: View {
                     )
                 }
                 if node.children.isEmpty {
-                    ContentUnavailableView("这个文件夹是空的", systemImage: "folder")
+                    emptyFolderState
                 } else {
-                    VSplitView {
-                        TreemapView(
-                            node: node,
-                            selectedID: model.selectedNodeID,
-                            onSelect: { model.selectedNodeID = $0.id },
-                            onDrill: { model.drill(into: $0) }
-                        )
-                        .frame(minHeight: 200)
-
-                        childrenList(node)
-                            .frame(minHeight: 160)
+                    HStack(spacing: 0) {
+                        treemapColumn(node)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        Divider().background(DesignTokens.Palette.line1)
+                        detailsPanel(node)
+                            .frame(width: 320)
                     }
                 }
             }
         } else {
-            ContentUnavailableView {
-                Label("还没有扫描结果", systemImage: "chart.pie")
-            } description: {
-                Text("选择一个文件夹，或扫描默认位置，看看空间被什么占用了。")
-            } actions: {
-                Button("扫描默认位置") { model.scanDefault() }
+            EmptyStateView(
+                onChooseFolder: { model.chooseFolder() },
+                onScanAll: { model.scanDefault() }
+            )
+        }
+    }
+
+    private var emptyFolderState: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "folder")
+                .font(.system(size: 40))
+                .foregroundStyle(DesignTokens.Palette.text3)
+            Text("storage.empty_folder")
+                .font(.system(size: 13))
+                .foregroundStyle(DesignTokens.Palette.text3)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(40)
+    }
+
+    // MARK: Treemap column
+
+    private func treemapColumn(_ node: FileNode) -> some View {
+        VStack(spacing: 0) {
+            TreemapView(
+                node: node,
+                selectedID: model.selectedNodeID,
+                onSelect: { model.selectedNodeID = $0.id },
+                onDrill: { model.drill(into: $0) }
+            )
+            .padding(14)
+        }
+    }
+
+    // MARK: Right details panel
+
+    private func detailsPanel(_ node: FileNode) -> some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 16) {
+                breadcrumbView
+                breakdownList
+                insightCard
+                cleanCTA
+            }
+            .padding(16)
+        }
+        .background(DesignTokens.Palette.glass1)
+    }
+
+    private var breadcrumbView: some View {
+        let crumbs = model.breadcrumb
+        return VStack(alignment: .leading, spacing: 6) {
+            Text("storage.panel.location")
+                .font(DesignTokens.Typography.label)
+                .foregroundStyle(DesignTokens.Palette.text4)
+                .textCase(.uppercase)
+                .tracking(0.8)
+            HStack(spacing: 4) {
+                ForEach(Array(crumbs.suffix(4).enumerated()), id: \.offset) { idx, n in
+                    if idx > 0 {
+                        Image(systemName: "chevron.right")
+                            .font(.system(size: 8, weight: .semibold))
+                            .foregroundStyle(DesignTokens.Palette.text4)
+                    }
+                    Text(verbatim: n.name)
+                        .font(.system(size: 12, weight: idx == crumbs.suffix(4).count - 1 ? .semibold : .regular))
+                        .foregroundStyle(idx == crumbs.suffix(4).count - 1
+                            ? DesignTokens.Palette.text1
+                            : DesignTokens.Palette.text3)
+                        .lineLimit(1)
+                }
+                Spacer(minLength: 0)
             }
         }
     }
 
-    private var scanningView: some View {
-        VStack(spacing: 14) {
-            ProgressView()
-            if let progress = model.scanProgress {
-                Text("\(progress.scannedItemCount) 项 · \(ByteSize.formatted(progress.bytesScanned))")
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-                Text(progress.currentPath)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .frame(maxWidth: 480)
-            } else {
-                Text("正在扫描…").foregroundStyle(.secondary)
+    private var breakdownList: some View {
+        let kids = model.topChildren(limit: 6)
+        let totalBytes = max(model.currentNode?.allocatedSize ?? 1, 1)
+        return VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("storage.panel.breakdown")
+                    .font(DesignTokens.Typography.label)
+                    .foregroundStyle(DesignTokens.Palette.text4)
+                    .textCase(.uppercase)
+                    .tracking(0.8)
+                Spacer()
+                Text(verbatim: String(
+                    format: NSLocalizedString("storage.panel.breakdown_count", comment: ""),
+                    model.currentNode?.children.count ?? 0
+                ))
+                    .font(.system(size: 10))
+                    .foregroundStyle(DesignTokens.Palette.text4)
             }
-            Button("取消", role: .cancel) { model.cancelScan() }
-                .keyboardShortcut(.escape, modifiers: [])
+            VStack(spacing: 6) {
+                ForEach(kids) { child in
+                    breakdownRow(child, totalBytes: totalBytes)
+                }
+            }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(30)
+    }
+
+    private func breakdownRow(_ child: FileNode, totalBytes: Int64) -> some View {
+        let fraction = totalBytes > 0 ? Double(child.allocatedSize) / Double(totalBytes) : 0
+        let selected = child.id == model.selectedNodeID
+        return Button {
+            model.selectedNodeID = child.id
+        } label: {
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Image(systemName: child.isDirectory ? "folder.fill" : "doc")
+                        .font(.system(size: 11))
+                        .foregroundStyle(DesignTokens.Palette.blueHi)
+                    Text(verbatim: child.name)
+                        .font(.system(size: 12, weight: selected ? .semibold : .regular))
+                        .foregroundStyle(DesignTokens.Palette.text1)
+                        .lineLimit(1)
+                    Spacer(minLength: 4)
+                    Text(verbatim: ByteSize.formatted(child.allocatedSize))
+                        .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(DesignTokens.Palette.text2)
+                }
+                DesignBar(fill: fraction, variant: .default)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                    .fill(selected ? DesignTokens.Palette.blue.opacity(0.10) : Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                    .strokeBorder(selected ? DesignTokens.Palette.blue.opacity(0.30) : .clear, lineWidth: 1)
+            )
+            .contextMenu {
+                Button("storage.context.reveal") { model.revealInFinder(child) }
+                if child.isDirectory && !child.children.isEmpty {
+                    Button("storage.context.drill") { model.drill(into: child) }
+                }
+                Button("storage.context.exclude") { model.excludePath(child.url.path) }
+                Divider()
+                Button("storage.context.trash", role: .destructive) { model.moveToTrash(child) }
+            }
+            .onTapGesture(count: 2) { model.drill(into: child) }
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var insightCard: some View {
+        let kids = model.topChildren(limit: 1)
+        let topName = kids.first?.name ?? ""
+        let topSize = kids.first?.allocatedSize ?? 0
+        return HStack(alignment: .top, spacing: 8) {
+            Image(systemName: "sparkles")
+                .foregroundStyle(DesignTokens.Palette.blueHi)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("storage.panel.insight.title")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(DesignTokens.Palette.text2)
+                if !topName.isEmpty {
+                    Text(verbatim: String(
+                        format: NSLocalizedString("storage.panel.insight.body", comment: ""),
+                        topName,
+                        ByteSize.formatted(topSize)
+                    ))
+                        .font(.system(size: 11))
+                        .foregroundStyle(DesignTokens.Palette.text3)
+                        .fixedSize(horizontal: false, vertical: true)
+                } else {
+                    Text("storage.panel.insight.empty")
+                        .font(.system(size: 11))
+                        .foregroundStyle(DesignTokens.Palette.text3)
+                }
+            }
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                .fill(DesignTokens.Palette.blue.opacity(0.08))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.lg)
+                .strokeBorder(DesignTokens.Palette.blue.opacity(0.25), lineWidth: 1)
+        )
+    }
+
+    private var cleanCTA: some View {
+        Group {
+            if let selected = model.selectedNode {
+                DesignButton(.primary, action: { model.moveToTrash(selected) }) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "trash")
+                        Text(verbatim: String(
+                            format: NSLocalizedString("storage.panel.clean_cta", comment: ""),
+                            ByteSize.formatted(selected.allocatedSize)
+                        ))
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+            } else {
+                DesignButton(.ghost, action: {}) {
+                    Text("storage.panel.clean_hint")
+                        .frame(maxWidth: .infinity)
+                }
+                .disabled(true)
+            }
+        }
     }
 
     private func errorView(_ error: any Error) -> some View {
         VStack(spacing: 14) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 40))
-                .foregroundStyle(.orange)
+                .foregroundStyle(DesignTokens.Palette.warn)
             ErrorView(
                 error: error,
                 onRetry: { model.rescan() },
@@ -304,33 +541,6 @@ struct DiskMapView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(30)
-    }
-
-    private func childrenList(_ node: FileNode) -> some View {
-        List(node.childrenBySize) { child in
-            HStack(spacing: 8) {
-                Image(systemName: child.isDirectory ? "folder.fill" : "doc")
-                    .foregroundStyle(child.id == model.selectedNodeID ? Color.accentColor : .secondary)
-                Text(child.name)
-                    .lineLimit(1)
-                Spacer()
-                Text(ByteSize.formatted(child.allocatedSize))
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
-            }
-            .contentShape(Rectangle())
-            .onTapGesture(count: 2) { model.drill(into: child) }
-            .onTapGesture { model.selectedNodeID = child.id }
-            .contextMenu {
-                Button("在访达中显示") { model.revealInFinder(child) }
-                if child.isDirectory && !child.children.isEmpty {
-                    Button("进入此文件夹") { model.drill(into: child) }
-                }
-                Button("加入排除列表") { model.excludePath(child.url.path) }
-                Divider()
-                Button("移到废纸篓", role: .destructive) { model.moveToTrash(child) }
-            }
-        }
     }
 }
 
@@ -353,6 +563,8 @@ struct TreemapView: View {
             let nodesByID = Dictionary(uniqueKeysWithValues: children.map { ($0.id, $0) })
 
             ZStack(alignment: .topLeading) {
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                    .fill(DesignTokens.Palette.glass1)
                 ForEach(tiles) { tile in
                     if let child = nodesByID[tile.id] {
                         TreemapTileView(node: child, isSelected: child.id == selectedID)
@@ -364,7 +576,11 @@ struct TreemapView: View {
                 }
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
-            .background(Color(nsColor: .windowBackgroundColor))
+            .overlay(
+                RoundedRectangle(cornerRadius: DesignTokens.Radius.xl)
+                    .strokeBorder(DesignTokens.Palette.line1, lineWidth: 1)
+            )
+            .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.xl))
         }
     }
 }
@@ -378,22 +594,41 @@ private struct TreemapTileView: View {
         ZStack(alignment: .topLeading) {
             Rectangle().fill(tileColor)
             Rectangle().strokeBorder(
-                isSelected ? Color.accentColor : Color.black.opacity(0.18),
+                isSelected ? DesignTokens.Palette.blueHi : Color.black.opacity(0.30),
                 lineWidth: isSelected ? 2.5 : 0.5
             )
-            Text(node.name)
-                .font(.caption2)
+            if isSelected {
+                Rectangle()
+                    .strokeBorder(DesignTokens.Palette.blueHi.opacity(0.4), lineWidth: 4)
+                    .blur(radius: 4)
+            }
+            Text(verbatim: node.name)
+                .font(.system(size: 10.5, weight: .medium))
+                .foregroundStyle(.white.opacity(0.92))
                 .lineLimit(1)
-                .padding(3)
+                .padding(4)
         }
         .clipped()
         .help("\(node.name) — \(ByteSize.formatted(node.allocatedSize))")
     }
 
+    /// Tile colour rotates through the DiskFlow category palette so the
+    /// treemap reads as a cohesive piece of the rest of the app.
     private var tileColor: Color {
+        let palette: [Color] = [
+            DesignTokens.Palette.catApps,
+            DesignTokens.Palette.catDocs,
+            DesignTokens.Palette.catVideo,
+            DesignTokens.Palette.catPhoto,
+            DesignTokens.Palette.catSystem,
+            DesignTokens.Palette.catCache,
+            DesignTokens.Palette.catOther,
+            DesignTokens.Palette.blue,
+            DesignTokens.Palette.cyan,
+            DesignTokens.Palette.purple
+        ]
         let scalarSum = node.name.unicodeScalars.reduce(0) { $0 &+ Int($1.value) }
-        let hue = Double(scalarSum % 360) / 360.0
-        return Color(hue: hue, saturation: 0.42, brightness: 0.82)
+        return palette[scalarSum % palette.count].opacity(0.78)
     }
 }
 
@@ -408,20 +643,32 @@ struct PermissionBanner: View {
     var body: some View {
         HStack(spacing: 10) {
             Image(systemName: "exclamationmark.shield.fill")
-                .foregroundStyle(.orange)
-            Text(message)
-                .font(.callout)
+                .foregroundStyle(DesignTokens.Palette.warn)
+            Text(verbatim: message)
+                .font(.system(size: 12))
+                .foregroundStyle(DesignTokens.Palette.text2)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer()
-            Button("去授权", action: onOpenSettings)
+            DesignButton(.ghost, size: .small, action: onOpenSettings) {
+                Text("permission.cta.grant")
+            }
             Button {
                 onDismiss()
             } label: {
                 Image(systemName: "xmark")
+                    .font(.system(size: 11))
+                    .foregroundStyle(DesignTokens.Palette.text3)
             }
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
         }
-        .padding(10)
-        .background(.orange.opacity(0.12))
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(DesignTokens.Palette.warn.opacity(0.10))
+        .overlay(
+            Rectangle()
+                .fill(DesignTokens.Palette.warn.opacity(0.30))
+                .frame(height: 1),
+            alignment: .bottom
+        )
     }
 }

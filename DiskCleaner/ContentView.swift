@@ -17,6 +17,7 @@ import DiskCleanerCore
 enum Feature: String, CaseIterable, Identifiable {
     // DiskFlow workspace items
     case overview
+    case smartCleanup
     case storage
     case largeFiles
     case duplicates
@@ -39,6 +40,7 @@ enum Feature: String, CaseIterable, Identifiable {
     var titleKey: String {
         switch self {
         case .overview:     return "feature.overview"
+        case .smartCleanup: return "feature.smart_cleanup"
         case .storage:      return "feature.storage"
         case .largeFiles:   return "feature.large_files"
         case .duplicates:   return "feature.duplicates"
@@ -55,6 +57,7 @@ enum Feature: String, CaseIterable, Identifiable {
     var systemImage: String {
         switch self {
         case .overview:     return "square.grid.2x2"
+        case .smartCleanup: return "sparkles"
         case .storage:      return "internaldrive"
         case .largeFiles:   return "doc"
         case .duplicates:   return "doc.on.doc"
@@ -75,6 +78,10 @@ struct ContentView: View {
     @State private var hasFullDiskAccess: Bool
     @State private var showOnboarding: Bool
     @State private var searchText: String = ""
+    @State private var paletteVisible: Bool = false
+    /// Single shared scan store. Owned here so Dashboard and SmartCleanup
+    /// can both read the same scan result and react to changes.
+    @State private var scanStore = JunkScanStore()
 
     init(selection: Binding<Feature?>) {
         self._selection = selection
@@ -96,41 +103,170 @@ struct ContentView: View {
     }
 
     private var mainView: some View {
-        DesignFrame {
-            sidebar
-        } main: {
-            VStack(spacing: 0) {
-                DesignToolbar(
-                    searchText: $searchText,
-                    placeholderKey: "toolbar.search.placeholder",
-                    onRefresh: {},
-                    onNotifications: {},
-                    trailingActions: { toolbarTrailingActions }
+        ZStack {
+            DesignFrame {
+                sidebar
+            } main: {
+                VStack(spacing: 0) {
+                    DesignToolbar(
+                        searchText: $searchText,
+                        placeholderKey: "toolbar.search.placeholder",
+                        onRefresh: {},
+                        onNotifications: {},
+                        trailingActions: { toolbarTrailingActions }
+                    )
+                    detailView
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
+            }
+
+            // Hidden ⌘K shortcut sink — clicking does nothing visible, but
+            // the keyboard shortcut wires the global hotkey through SwiftUI.
+            Button("palette.toggle") {
+                paletteVisible.toggle()
+            }
+            .keyboardShortcut("k", modifiers: .command)
+            .opacity(0)
+            .frame(width: 0, height: 0)
+            .accessibilityHidden(true)
+
+            if paletteVisible {
+                CommandPalette(
+                    isPresented: $paletteVisible,
+                    commands: paletteCommands
                 )
-                detailView
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                .animation(.easeOut(duration: 0.18), value: paletteVisible)
             }
         }
     }
 
+    /// All commands the palette knows how to run. Order within each group
+    /// becomes the on-screen order.
+    private var paletteCommands: [PaletteCommand] {
+        [
+            PaletteCommand(
+                kind: .recommended,
+                titleKey: "palette.cmd.run_cleanup",
+                searchHaystack: "smart cleanup run 智能清理 立即清理",
+                icon: "sparkles", shortcut: nil,
+                run: { selection = .smartCleanup }
+            ),
+            PaletteCommand(
+                kind: .recommended,
+                titleKey: "palette.cmd.rescan",
+                searchHaystack: "rescan refresh 扫描 刷新",
+                icon: "arrow.clockwise", shortcut: "⌘R",
+                run: { Task { await scanStore.scan() } }
+            ),
+            PaletteCommand(
+                kind: .navigate,
+                titleKey: "feature.overview",
+                searchHaystack: "overview dashboard 仪表盘",
+                icon: "square.grid.2x2", shortcut: "⌘1",
+                run: { selection = .overview }
+            ),
+            PaletteCommand(
+                kind: .navigate,
+                titleKey: "feature.smart_cleanup",
+                searchHaystack: "smart cleanup 智能清理",
+                icon: "sparkles", shortcut: "⌘2",
+                run: { selection = .smartCleanup }
+            ),
+            PaletteCommand(
+                kind: .navigate,
+                titleKey: "feature.storage",
+                searchHaystack: "storage analyzer 磁盘",
+                icon: "internaldrive", shortcut: "⌘3",
+                run: { selection = .storage }
+            ),
+            PaletteCommand(
+                kind: .navigate,
+                titleKey: "feature.large_files",
+                searchHaystack: "large files 大文件",
+                icon: "doc", shortcut: "⌘4",
+                run: { selection = .largeFiles }
+            ),
+            PaletteCommand(
+                kind: .navigate,
+                titleKey: "feature.duplicates",
+                searchHaystack: "duplicates 重复",
+                icon: "doc.on.doc", shortcut: "⌘5",
+                run: { selection = .duplicates }
+            ),
+            PaletteCommand(
+                kind: .navigate,
+                titleKey: "feature.applications",
+                searchHaystack: "applications uninstall 应用 卸载",
+                icon: "square.grid.3x3", shortcut: "⌘6",
+                run: { selection = .applications }
+            ),
+            PaletteCommand(
+                kind: .navigate,
+                titleKey: "feature.memory",
+                searchHaystack: "memory monitor 内存",
+                icon: "cpu", shortcut: "⌘7",
+                run: { selection = .memory }
+            ),
+            PaletteCommand(
+                kind: .navigate,
+                titleKey: "feature.settings",
+                searchHaystack: "settings preferences 设置",
+                icon: "gearshape", shortcut: "⌘,",
+                run: { selection = .settings }
+            ),
+            PaletteCommand(
+                kind: .action,
+                titleKey: "palette.cmd.open_trash",
+                searchHaystack: "trash 废纸篓 open",
+                icon: "trash", shortcut: nil,
+                run: {
+                    NSWorkspace.shared.open(URL(fileURLWithPath: NSHomeDirectory() + "/.Trash"))
+                }
+            ),
+            PaletteCommand(
+                kind: .action,
+                titleKey: "palette.cmd.history",
+                searchHaystack: "history 历史 cleanup",
+                icon: "chart.line.uptrend.xyaxis", shortcut: nil,
+                run: { selection = .history }
+            )
+        ]
+    }
+
     /// Right-side toolbar actions. On the Dashboard we surface "Rescan" +
-    /// "Clean up X" per the DiskFlow design; other screens stay minimal.
+    /// "Clean up X" per the DiskFlow design; other screens (including
+    /// Smart Cleanup, which has its own floating action bar) stay clean.
     @ViewBuilder
     private var toolbarTrailingActions: some View {
         if selection == .overview {
-            DesignButton(.ghost, size: .small, action: {}) {
+            DesignButton(.ghost, size: .small, action: {
+                Task { await scanStore.scan() }
+            }) {
                 Text("toolbar.action.rescan")
             }
-            DesignButton(.primary, size: .small, action: {}) {
+            DesignButton(.primary, size: .small, action: {
+                selection = .smartCleanup
+            }) {
                 HStack(spacing: 4) {
                     Image(systemName: "sparkles")
                     Text(verbatim: String(
                         format: NSLocalizedString("toolbar.action.cleanup", comment: ""),
-                        "12.4 GB"
+                        cleanupCtaAmount
                     ))
                 }
             }
         }
+    }
+
+    /// "12.4 GB"-style number rendered in the Dashboard toolbar's cleanup
+    /// CTA. Pulled from a real scan when available; otherwise a sensible
+    /// placeholder so first-run users still see something concrete.
+    private var cleanupCtaAmount: String {
+        if scanStore.hasScanned, scanStore.totalReclaimableBytes > 0 {
+            return ByteSizeFormatter.short(scanStore.totalReclaimableBytes)
+        }
+        return "12.4 GB"
     }
 
     // MARK: - Sidebar
@@ -186,17 +322,26 @@ struct ContentView: View {
     private var detailView: some View {
         switch selection ?? .overview {
         case .overview:
-            DashboardView()
+            DashboardView(
+                store: scanStore,
+                onRunSmartCleanup:    { selection = .smartCleanup },
+                onViewAllSuggestions: { selection = .smartCleanup }
+            )
+        case .smartCleanup:
+            SmartCleanupView(
+                store: scanStore,
+                onDone: { selection = .overview }
+            )
         case .storage:
             DiskMapView()
         case .largeFiles:
-            DuplicatesView()
+            LargeFilesView()
         case .duplicates:
             DuplicatesView()
         case .applications:
             UninstallView()
         case .memory:
-            ComingSoonView(titleKey: "feature.memory",    systemImage: "cpu",                   plannedSprint: "Sprint 6")
+            MemoryView()
         case .external:
             ComingSoonView(titleKey: "feature.external",  systemImage: "externaldrive",         plannedSprint: "later")
         case .junk:

@@ -609,6 +609,279 @@ struct ErrorStateView: View {
     }
 }
 
+// MARK: - Cleaning (transition between "Run cleanup" and Success)
+
+/// A single task displayed in the `CleaningStateView` list. Three states
+/// drive the visual treatment: completed (green ✓), running (animated
+/// spinner + shimmer), or queued (faint, dashed circle index).
+enum CleaningTaskStatus {
+    case done
+    case running
+    case queued
+}
+
+struct CleaningTask: Identifiable {
+    let id = UUID()
+    /// 1-based ordinal shown in the queued state circle.
+    let index: Int
+    /// User-visible task name (e.g. "清理 Xcode 缓存"). Verbatim — not localized.
+    let title: String
+    /// Tail string under the title (e.g. "6.2 GB"). Verbatim.
+    let detail: String
+    /// 0...1, how far through the task we are.
+    let progress: Double
+    let status: CleaningTaskStatus
+}
+
+/// The "doing something right now" transition screen — sits between
+/// the Smart Cleanup CTA and the Success screen. Per README §4.3
+/// the goal is to make the user feel something is happening, so the
+/// visual is dense: pulsing radial glow, three concentric orbit rings,
+/// floating particles, a hero number that animates upward, and a
+/// task list with three statuses.
+struct CleaningStateView: View {
+
+    /// Bytes freed so far in this cleanup pass.
+    var freedBytes: Int64
+    /// Total bytes the user opted to clean.
+    var totalBytes: Int64
+    /// Task list. Order = display order.
+    var tasks: [CleaningTask]
+
+    @State private var pulse: Bool = false
+    @State private var orbit: Double = 0
+
+    var body: some View {
+        VStack(spacing: 26) {
+            heroOrbits
+
+            VStack(spacing: 8) {
+                heroNumber
+                Text("state.cleaning.subtitle")
+                    .font(.system(size: 13))
+                    .foregroundStyle(DesignTokens.Palette.text3)
+            }
+
+            taskList
+                .frame(maxWidth: 520)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(40)
+        .onAppear {
+            withAnimation(.easeInOut(duration: 3).repeatForever(autoreverses: true)) {
+                pulse = true
+            }
+            withAnimation(.linear(duration: 13).repeatForever(autoreverses: false)) {
+                orbit = 360
+            }
+        }
+    }
+
+    // MARK: Hero orbits + central number
+
+    private var heroOrbits: some View {
+        ZStack {
+            // Pulsing blue glow halo behind the orbits.
+            Circle()
+                .fill(
+                    RadialGradient(
+                        colors: [
+                            DesignTokens.Palette.blue.opacity(pulse ? 0.30 : 0.18),
+                            .clear
+                        ],
+                        center: .center,
+                        startRadius: 0,
+                        endRadius: 160
+                    )
+                )
+                .frame(width: 320, height: 320)
+                .blur(radius: 14)
+                .animation(.easeInOut(duration: 3).repeatForever(autoreverses: true), value: pulse)
+
+            // Three concentric orbit rings, each with a glowing satellite.
+            orbitRing(radius: 110, color: DesignTokens.Palette.blue,   speed: 18,  reverse: false, phase: 0)
+            orbitRing(radius:  85, color: DesignTokens.Palette.purple, speed: 13,  reverse: true,  phase: 120)
+            orbitRing(radius:  60, color: DesignTokens.Palette.cyan,   speed:  8,  reverse: false, phase: 240)
+        }
+        .frame(width: 240, height: 240)
+    }
+
+    private func orbitRing(radius: CGFloat, color: Color, speed: Double, reverse: Bool, phase: Double) -> some View {
+        ZStack {
+            Circle()
+                .strokeBorder(color.opacity(0.18), lineWidth: 1)
+                .frame(width: radius * 2, height: radius * 2)
+            Circle()
+                .fill(color)
+                .frame(width: 8, height: 8)
+                .shadow(color: color, radius: 8)
+                .offset(x: radius)
+                .rotationEffect(.degrees((reverse ? -orbit : orbit) + phase))
+                .animation(.linear(duration: speed).repeatForever(autoreverses: false), value: orbit)
+        }
+    }
+
+    private var heroNumber: some View {
+        HStack(alignment: .lastTextBaseline, spacing: 6) {
+            Text(verbatim: ByteSizeFormatter.short(freedBytes))
+                .font(.system(size: 48, weight: .bold))
+                .tracking(-1.5)
+                .foregroundStyle(
+                    LinearGradient(
+                        colors: [
+                            Color.white,
+                            DesignTokens.Palette.blueHi,
+                            DesignTokens.Palette.cyan
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                )
+            Text(verbatim: "/")
+                .font(.system(size: 18))
+                .foregroundStyle(DesignTokens.Palette.text3)
+            Text(verbatim: ByteSizeFormatter.short(totalBytes))
+                .font(.system(size: 18, weight: .medium))
+                .foregroundStyle(DesignTokens.Palette.text2)
+        }
+    }
+
+    // MARK: Task list
+
+    private var taskList: some View {
+        VStack(spacing: 8) {
+            ForEach(tasks) { task in
+                taskRow(task)
+            }
+        }
+    }
+
+    private func taskRow(_ task: CleaningTask) -> some View {
+        HStack(spacing: 12) {
+            taskStatusIcon(task)
+            VStack(alignment: .leading, spacing: 4) {
+                HStack {
+                    Text(verbatim: task.title)
+                        .font(.system(size: 12.5, weight: .medium))
+                        .foregroundStyle(taskTitleColor(task))
+                    Spacer(minLength: 8)
+                    Text(verbatim: task.detail)
+                        .font(.system(size: 11, design: .monospaced))
+                        .foregroundStyle(taskDetailColor(task))
+                }
+                progressBar(task)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .background(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                .fill(taskBackground(task))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: DesignTokens.Radius.md)
+                .strokeBorder(taskBorder(task), lineWidth: 1)
+        )
+        .opacity(task.status == .queued ? 0.55 : 1)
+        .shadow(
+            color: task.status == .running
+                ? DesignTokens.Palette.blue.opacity(0.30)
+                : .clear,
+            radius: 12
+        )
+    }
+
+    @ViewBuilder
+    private func taskStatusIcon(_ task: CleaningTask) -> some View {
+        switch task.status {
+        case .done:
+            ZStack {
+                Circle()
+                    .fill(DesignTokens.Palette.good.opacity(0.18))
+                    .frame(width: 22, height: 22)
+                Image(systemName: "checkmark")
+                    .font(.system(size: 11, weight: .bold))
+                    .foregroundStyle(DesignTokens.Palette.good)
+            }
+        case .running:
+            ZStack {
+                Circle()
+                    .stroke(DesignTokens.Palette.blue.opacity(0.25), lineWidth: 2)
+                    .frame(width: 22, height: 22)
+                Circle()
+                    .trim(from: 0, to: 0.3)
+                    .stroke(
+                        DesignTokens.Palette.blueHi,
+                        style: StrokeStyle(lineWidth: 2, lineCap: .round)
+                    )
+                    .frame(width: 22, height: 22)
+                    .rotationEffect(.degrees(orbit))
+                    .animation(.linear(duration: 1.2).repeatForever(autoreverses: false), value: orbit)
+            }
+        case .queued:
+            ZStack {
+                Circle()
+                    .strokeBorder(
+                        DesignTokens.Palette.text4,
+                        style: StrokeStyle(lineWidth: 1, dash: [2, 2])
+                    )
+                    .frame(width: 22, height: 22)
+                Text(verbatim: "\(task.index)")
+                    .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                    .foregroundStyle(DesignTokens.Palette.text3)
+            }
+        }
+    }
+
+    private func progressBar(_ task: CleaningTask) -> some View {
+        let fillColor: Color = {
+            switch task.status {
+            case .done:    return DesignTokens.Palette.good
+            case .running: return DesignTokens.Palette.blueHi
+            case .queued:  return DesignTokens.Palette.text4
+            }
+        }()
+        return GeometryReader { geo in
+            ZStack(alignment: .leading) {
+                Capsule().fill(DesignTokens.Palette.glass2)
+                Capsule()
+                    .fill(fillColor)
+                    .frame(width: max(0, geo.size.width * task.progress))
+                    .shadow(color: fillColor.opacity(0.4), radius: 3)
+            }
+        }
+        .frame(height: 4)
+    }
+
+    private func taskTitleColor(_ task: CleaningTask) -> Color {
+        task.status == .queued ? DesignTokens.Palette.text3 : DesignTokens.Palette.text1
+    }
+
+    private func taskDetailColor(_ task: CleaningTask) -> Color {
+        switch task.status {
+        case .done:    return DesignTokens.Palette.good
+        case .running: return DesignTokens.Palette.blueHi
+        case .queued:  return DesignTokens.Palette.text4
+        }
+    }
+
+    private func taskBackground(_ task: CleaningTask) -> Color {
+        switch task.status {
+        case .done:    return DesignTokens.Palette.glass1
+        case .running: return DesignTokens.Palette.blue.opacity(0.08)
+        case .queued:  return DesignTokens.Palette.glass1
+        }
+    }
+
+    private func taskBorder(_ task: CleaningTask) -> Color {
+        switch task.status {
+        case .done:    return DesignTokens.Palette.line1
+        case .running: return DesignTokens.Palette.blue.opacity(0.35)
+        case .queued:  return DesignTokens.Palette.line1
+        }
+    }
+}
+
 // MARK: - Byte formatter helper
 
 /// Lightweight helper so state views can render byte counts without depending

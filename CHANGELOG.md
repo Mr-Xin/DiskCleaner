@@ -2,6 +2,323 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，版本号采用 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.10.0] — 2026-05-27 — 把剩下的 Sprint 全跑完
+
+一晚通跑：Sprint 3-7 完整接入 DiskFlow 视觉 + v1.0 必发的两个确认弹窗 + Sprint 9 ⌘K 命令面板 + History 重设计。需要系统级权限的子功能（菜单栏 mini-app、桌面 Widget、Apple Shortcuts、iCloud 同步、定时任务唤醒）按用户要求跳过，留到打包签名一并处理。
+
+### Sprint 3 — Storage Analyzer 重设计
+
+`DiskMapView` 整屏按 DiskFlow §4.1 重做：
+
+- 顶部 action 行用 `DesignButton(.default/.ghost, .small)` + `DesignChip` 替换原生 `Button` / `Label`，所有控件走 token
+- 主区改为左 treemap canvas + 右 320pt 详情面板：
+  - 详情面板含 **当前路径 breadcrumb**（最多展示末尾 4 段，最后一段加粗）
+  - **占用分布列表**：top 6 子项 + 每项 `DesignBar(.default)` 横条（按占比），选中行蓝边 + 蓝底
+  - **Insight 卡**（蓝色光晕 glass card）：根据当前目录最大子项写一句话洞察（"X 占了 Y，是当前目录的最大占用项"）
+  - **Clean CTA**：选中项时变 primary「移到废纸篓 · X」按钮；未选时灰态提示
+- TreemapView tile 颜色从随机 HSV 切换为 DiskFlow 7 段分类色循环；选中态加蓝色发光描边
+- 选中项的右键菜单全部走 i18n key（`storage.context.*`）
+- 扫描中 / 错误 / 空状态分别复用 `LoadingStateView` / `ErrorStateView` / `EmptyStateView`
+- `PermissionBanner` 改为 DiskFlow 风格的 warn-tinted 玻璃条
+
+### Sprint 4 — Large Files 独立屏
+
+新文件 `DiskCleaner/Features/LargeFilesView.swift` —— `ContentView.detailView` 里的 `.largeFiles` 终于不再错路由到 `DuplicatesView`，现在指向真实的大文件视图：
+
+- 顶部 action 行 + 类型筛选 chips（All / Video / Archive / Image / Audio / Folder / Other）
+- 主区 = 左侧表格 + 右侧 280pt 预览面板
+  - **表格 6 列**：复选框 / DesignGlyph（按扩展名分色）/ 名称+路径 / 大小 / 修改时间（`RelativeDateTimeFormatter`）/ 类型 / 更多菜单
+  - **预览面板**：16:10 渐变缩略图（按类型挑 SF Symbol + 类别色渐变）+ 元信息（Size/Type/Modified）+ Reveal / Trash 双按钮
+- `LargeFilesViewModel` 用 `DiskScanner` 扫树 + `LargeFileFinder` 筛 ≥ `AppSettings.largeFileThresholdMB()` 的文件
+- 底部 FAB：选中数 + 总大小 + Move to Trash 按钮，>1 GB 时弹 `ConfirmDeleteSheet`
+- 单击行选中 1 项，复选框多选；右上「⋯」菜单提供 Reveal / Trash 单项操作
+
+### Sprint 5 — Duplicates 重设计
+
+`DuplicatesView` 完整按 §4.1 重做，**剥离 large-files 路径**（已迁出到独立屏）：
+
+- 左 260pt 分组列表：当前组左侧 3pt 蓝色边条 + 蓝底背景；每行显示文件名 + 份数 + reclaimable bytes（绿色）
+- 右侧对比面板：
+  - **KEEP 卡**（`DesignCard(.glowBlue)`，绿点 badge）—— 当前保留的副本
+  - **VS 分隔符**
+  - **DELETE 卡** 堆叠（红点 badge + danger 底色），每张支持「改保留这个」(swap keeper) / 「移到废纸篓」(单项删除)
+- 底部 FAB：当前组可释放量 + 全局累计 + Skip / Apply smart pick 按钮
+- ViewModel 重构：`keepers: [Int: URL]` 管理每组的 keeper 选择，`applySmartPick()` 一键把当前组的非 keeper 全部 trash 后自动跳到下一组
+- 单项删除后若组剩 ≤1 项，整组自动剔除
+
+### Sprint 6 — Memory Monitor（无须权限路径）
+
+新文件 `MemoryView.swift`：
+
+- `MemoryStatsModel` 以 1 Hz 节奏轮询 Mach `host_statistics64` + `sysctlbyname("vm.swapusage")`，60 秒环形缓冲
+- 内存口径：In use（active + wired + compressed），Cached（inactive + purgeable），Swap（`xsw_usage.xsu_used`），CPU（`host_cpu_load_info` ticks 增量）
+- 4 张统计卡，每张：value + 颜色匹配的 Swift Charts sparkline（24pt 高）+ 类别色发光圆点
+- 主图：60s 双线（RAM% 蓝 + CPU% 青）+ 填充渐变 + 左侧 0/50/100 % 标签
+- 进程列表占位：明确告知 per-process 数据需要 `proc_pidinfo` entitlement（README §13.04 类逻辑：先跳过）
+- 同时给 Dashboard 的 memory mini 卡加一次性数据：`readMemorySampleOnce()` 用于一次性读取，避免 Dashboard 同时多开一个 polling 计时器
+- `ContentView` 把 `.memory` 路由从 `ComingSoonView` 切到 `MemoryView`
+
+### Sprint 7 — App Uninstaller 重设计
+
+`UninstallView` 重做为 4 列 LazyVGrid：
+
+- 每个 app card：`NSWorkspace.shared.icon(forFile:)` 渲染真实图标（圆角 22%）+ 名称 + bundleID（mono）
+- 选中态：blue glow border + box-shadow + bg tint
+- 选中后下方展开 detail panel：app icon + 名称 + bundle + scan chip，下面列出**按目录类型分桶的关联文件**（Caches / App Support / Preferences / Launch services / Other），每行可单独勾选
+- 底部 FAB：「保留应用，仅清残留」(ghost) vs「完全卸载」(danger primary)
+- 工具栏加搜索输入框（按名称 / bundle ID 实时过滤）
+- 「完全卸载」按下弹 `ConfirmUninstallSheet`（详见下节）
+- 新增 `AppIconView` 复用组件（图标加载失败有 fallback）
+
+### v1.0 补完 — 删除 / 卸载确认弹窗
+
+新文件 `DiskCleaner/Design/ConfirmationSheets.swift`：
+
+**`ConfirmDeleteSheet`**（440pt 居中卡，DiskFlow §13.04）
+
+- 黄色 warn 光晕图标 + 标题 + 主体（释放量 X GB 文案）
+- 文件列表：最多 6 行，超出显示「还有 N 项」
+- 「下次类似操作不再询问」复选 → 写入 `UserDefaults["DiskCleaner.confirmDelete.dontAsk"]`
+- 双按钮：Cancel / Move to Trash（danger）
+- LargeFilesView 在选中 ≥ 1 GB 且用户未勾「不再询问」时弹此 sheet
+
+**`ConfirmUninstallSheet`**（480pt 居中卡）
+
+- 64pt 应用图标 + 标题 + 副标题（应用名 + 关联文件总量）
+- 分桶清单：Caches / App Support（高风险，黄色高亮 + risky chip）/ Preferences / Launch services / Other，每行展示文件数 + 大小
+- 黄色信息条：解释 .app 可能需要管理员权限
+- 「保留应用支持目录」复选 → confirm 时把 Application Support 中的项从 selection 剔除
+- 双按钮：Cancel / Uninstall（danger）
+- UninstallView 的「完全卸载」按钮按下时弹此 sheet
+
+### Sprint 9 — ⌘K 命令面板
+
+新文件 `DiskCleaner/Design/CommandPalette.swift`：
+
+- 620pt 居中浮层，背景 55% 黑色 + ESC / 外部点击关闭
+- 顶部搜索栏：sparkles 图标 + TextField + 闪烁光标（0.6 s 周期 Timer）+ 右侧 `⌘K` keycap
+- 4 分组：**推荐操作 / 跳转 / 动作 / 最近**（每组前都有 uppercase tracking label）
+- 高亮行：3pt 蓝色左边条 + 蓝底 + icon 变 blueHi + 行加粗
+- ↑↓ 上下移动，Enter 执行，hover 自动 highlight 该行
+- 12 个内置命令：Run smart cleanup / Rescan / Overview / SmartCleanup / Storage / LargeFiles / Duplicates / Apps / Memory / Settings / Open Trash / Scan history
+- 通过隐藏 Button + `.keyboardShortcut("k", modifiers: .command)` 接入 ⌘K 全局快捷键（标准 SwiftUI 路径，无需 NSEvent monitor）
+- ContentView 用 ZStack 把 palette 叠在 DesignFrame 之上，transition 用 0.18s opacity + scale 渐入
+
+### Cleanup History（HistoryView）重设计
+
+- 顶部 action 行换 `DesignButton(.ghost/.danger, .small)`，加 snapshot 数量 chip
+- 趋势图卡：DesignCard(.elevated) 包裹 Swift Charts，line + point mark 用按路径分色，y/x 轴标签走 token 颜色
+- 快照列表：DesignCard(.default) 容器，最多展示 50 行；每行 clock 图标 + 路径 + 时间戳 + 大小 + 项数
+- 空 / 加载状态复用 `LoadingStateView` 与 `ContentUnavailableView`
+
+### 通用改动
+
+- 跳过的事项（与用户对齐"需要权限的任务先跳过"）：
+  - 浅色主题切换（design tokens 全部基于深色定义，整体改造需要单独 Sprint）
+  - 菜单栏 mini-app · 桌面 Widget（需要不同的 bundle 类型 + 签名）
+  - Apple Shortcuts 集成（需要 App Intents + entitlement）
+  - iCloud 偏好同步（需要 Container entitlement）
+  - 定时扫描 LaunchAgent（v0.7 已有 in-app 提醒，离线唤醒留到代码签名后）
+  - Memory 进程列表（需要 `proc_pidinfo` entitlement）
+- `Feature.largeFiles` 路由修正：从 `DuplicatesView` 改指 `LargeFilesView`
+- `Feature.memory` 路由从 `ComingSoonView` 改指 `MemoryView`
+
+### i18n 字符串
+
+`Localizable.xcstrings` 一次性加入 ~150 条新 key（zh-Hans + en），涵盖：
+
+- `storage.*` —— Storage Analyzer 视图（17 条）
+- `largefiles.*` —— Large Files 视图（24 条）
+- `duplicates.*` —— Duplicates 视图（20 条）
+- `memory.*` —— Memory Monitor（13 条）
+- `uninstall.*` —— App Uninstaller 重做（15 条）
+- `confirm.*` —— 两个确认 sheet（13 条）
+- `palette.*` —— 命令面板（13 条）
+- `history.*` —— 扫描历史卡片（8 条）
+- `permission.cta.grant`、`smartcleanup.access.unknown` 等若干
+
+### 后续
+
+剩下的真正需要权限 / 系统集成的事项：
+
+- 浅色主题切换（design tokens 重构）
+- 菜单栏 mini-app + Widget + Apple Shortcuts + iCloud 偏好同步（README §13.07）
+- LaunchAgent 后台定时扫描提醒
+- Memory per-process 列表
+- 应用打包 / 公证 / 代码签名（v1.0 主题）
+
+## [0.9.2] — 2026-05-27 — Smart Cleanup 闭环 + 真实扫描数据
+
+把 v0.9.1 留下的两个尾巴一起做完：「立即清理」按钮真正走 `DeletionService`，Dashboard 与 Smart Cleanup 用同一份 `JunkRulesEngine` 扫描结果。先点 Dashboard 看到真实可释放量 → 进 Smart Cleanup 看到真实分组 → 点「立即清理」走过渡动画 → 移到废纸篓 → Success 屏，全程跑通。
+
+### 新增
+
+**JunkScanStore 共享扫描服务**（`DiskCleaner/Features/JunkScanStore.swift`）
+
+`@MainActor @Observable` 单例 store：
+
+- `categories: [SmartCleanupCategory]` —— 扫描后由 `SmartCleanupCategory.fromJunkItems(_:)` 映射而来
+- `isScanning / hasScanned / lastScanAt / lastError` 状态字段
+- `totalReclaimableBytes / totalItemCount` 给 Dashboard 用的汇总
+- `ensureScanned()` —— 首次进入 SmartCleanup 屏时懒触发，重入安全
+- `scan()` —— 强制扫描，跑在 `Task.detached(priority: .userInitiated)` 里避免阻塞主线程（`JunkRulesEngine` 的同步 FileManager 操作不会自动让步）
+
+ContentView 用 `@State scanStore = JunkScanStore()` 持有，Dashboard / Smart Cleanup 各拿到引用，**全 App 只扫一次**。
+
+**SmartCleanupCategory.fromJunkItems(_:) 引擎适配器**
+
+把 `JunkRulesEngine` 输出的 `[JunkItem]` 映射到 UI 的 6 个分类：
+
+- `cache` ← `.userCache + .browserCache + .developerJunk + .packageManagerCache + .systemCache`
+- `temp` ← `.logs + .trash`
+- `downloads` ← `.mailDownloads + .largeOldDownloads`
+- `large` ← `.oldDeviceBackup`
+- `custom` 默认归到 `cache`
+- `duplicates / leftover` 无引擎数据，保留 `samples()` 占位（等 DuplicateFinder / AppUninstaller 接入再换掉）
+
+每条 `JunkItem` 用 `SmartCleanupItem(junkItem:)` 构造，自动：
+- `url`、`bytes`、`name`、`path` 直接来自 `JunkItem`
+- `lastAccessDisplay` 取 `URLResourceKey.contentAccessDate ?? .contentModificationDate`，用 `RelativeDateTimeFormatter(.short)` 格式化为「2 周前」
+- `risk = item.rule.safety == .safe ? .safe : .caution`
+- `reasonDisplay = item.rule.explanation`（Chinese 自带）
+- `defaultSelected = item.rule.safety == .safe`
+
+**SmartCleanupPhase 状态机**
+
+`SmartCleanupModel.phase: SmartCleanupPhase` 三态：
+
+- `.picking` —— 现有的选择 UI
+- `.cleaning(progress: CleanupProgress)` —— 切到 `CleaningStateView`
+- `.success(summary: CleanupSummary)` —— 切到 `SuccessStateView`
+
+`runCleanup()` async：
+1. 按当前展示顺序，把选中的项按 category 分组（带 `url` 的才算）
+2. 为每个 category 构造一个 `CleaningTask`，初始全 `.queued`，进入 `.cleaning` 阶段
+3. 顺序处理每个 category：状态从 `queued → running → done`，每个之间 `Task.sleep(350ms)` 让眼睛看清动画
+4. 每批调用 `DeletionService.moveToTrash(urls, source: "smart-cleanup")`，trashed URLs 进集合，从 categories 里剔除（用户回 picking 时看到的就是清理后的状态）
+5. 全部完成后切到 `.success`，breakdown 按 category 排序
+
+**SmartCleanupView 阶段渲染**
+
+- `body` 用 `switch model.phase` 切三种屏
+- `.task` 入口：`store.ensureScanned()` + `model.applyCategories(store.categories)`
+- `.onChange(of: store.lastScanAt)` 同步：用户点工具栏「重新扫描」时也能立刻刷新
+- 扫描中且没有缓存数据时，picker 上叠一层 `LoadingStateView` + `MeshGradientBackground`
+- 「立即清理」按钮加 `canCleanup` 守卫：必须至少有一个带真实 `url` 的项被勾选才能点
+- success 屏的 breakdown 按 category 着色（`label == titleDisplay` 反查 category color）
+
+**Dashboard 真实数据接入**
+
+- `DashboardView` 接受 `store: JunkScanStore?` 参数
+- 新增 `effectiveReclaimableBytes / effectiveQuickWinsCount / effectiveSuggestions` 派生属性：`store.hasScanned` 时用 store 数据，否则用 placeholder snapshot
+- 3 张 Smart Cleanup 建议卡：扫完后取 store 中字节数最多的 3 个非空 category，每张卡的 title 用 category 内最大那一项的 name，glyph / 颜色 / summary 来自 category
+- Health Score 卡和 Smart Cleanup 段的「N 项建议 · X.X GB」汇总也跟着更新
+- `.task` 入口顺手 `store?.ensureScanned()` ——首次进 Dashboard 自动后台扫，扫完数字静默升级
+
+**ContentView 工具栏「清理 X.X GB」**
+
+- `cleanupCtaAmount` 计算属性：有真实扫描结果就显示真实可释放量，否则保留 "12.4 GB" 占位
+- 「重新扫描」ghost 按钮接 `Task { await scanStore.scan() }`，真正触发扫描
+
+### 改动
+
+**模型字段**
+
+- `SmartCleanupItem` 新增 `url: URL?`（占位为 `nil`）
+- `SmartCleanupItem.lastAccessKey: LocalizedStringKey` → `lastAccessDisplay: String`，构造时 `NSLocalizedString` 解析；real items 用 `RelativeDateTimeFormatter` 出文案
+- `SmartCleanupItem.reasonKey: LocalizedStringKey` → `reasonDisplay: String`，real items 直接拿 `rule.explanation`
+- `SmartCleanupCategory` 新增 `titleDisplay: String`（在 `runCleanup` 构造 task title 时用，不走 SwiftUI 解析）
+- `SmartCleanupModel` 改为 `@MainActor`，新增 `phase / lastError / applyCategories(_:) / resetToPicking() / runCleanup()`
+
+**SwiftUI 视图**
+
+- `SmartCleanupView.init` 现在要求传入 `store: JunkScanStore`，新增 `onDone: () -> Void` 回调（success 屏「完成」按钮按下时路由回 Dashboard）
+- 旧的 `onRunCleanup: (Int64, Int) -> Void` 回调移除（清理改为内部 phase 转换）
+- `DashboardView.init` 新增 `store: JunkScanStore?` 形参
+
+**i18n 字符串**
+
+- 新增 `smartcleanup.access.unknown`（zh-Hans「未知」/ en "unknown"）—— 当文件没有 access date / mod date 时兜底
+
+### 后续
+
+Sprint 3 候选（按 README §10）：
+
+- 把工具栏「重新扫描」按钮加进度反馈（rotating chevron / progress chip）
+- 把 Duplicates / Leftover 两个 category 也接到真实引擎（`DuplicateFinder` / `AppUninstaller`）
+- Storage Analyzer Sunburst（可先 treemap 占位）
+- Dashboard donut 的 6 段分类也切到真实数据（需要按目录大小聚合 `ScanSnapshot`，比 Junk 扫描复杂得多）
+
+## [0.9.1] — 2026-05-26 — Smart Cleanup 中心 + Cleaning 过渡屏
+
+把 Sprint 2 收尾收到底：实现智能清理中心（Dashboard 两个 CTA 的真正落点）+ Cleaning 过渡状态屏 + 配套的 Checkbox/Risk 两个 atom 组件。Dashboard 上的「运行智能清理」「查看全部」按钮现在能跳到 Smart Cleanup 屏；侧栏新增「智能清理」入口（带 sparkles 图标）。
+
+### 新增
+
+**两个新 atom 组件**
+
+- `DesignCheckbox`（`DiskCleaner/Design/DesignCheckbox.swift`）—— 14×14 自定义复选框，3 个状态（off / on / indeterminate），on 时蓝渐变 + 阴影光晕，indeterminate 时白色横线
+- `DesignRisk`（`DiskCleaner/Design/DesignRisk.swift`）—— 三档风险徽章 + `RiskLevel` 枚举（safe 绿 / normal 蓝 / caution 黄），匹配 §4.1 的 `<Risk level />`，统一 18pt 高 pill 带发光小点
+
+**SmartCleanupView 主屏**（`DiskCleaner/Features/SmartCleanupView.swift`）
+
+布局完整还原 `hifi-smart-cleanup.jsx`：
+
+- 左侧 240pt 过滤侧栏：顶部「19.6 GB · 共 6 类 · 260 项」总览；6 个分类项，激活态有蓝边 + 浅蓝背景，已勾选数显示为蓝色 badge；底部「安全保障」glass 卡片说明
+- 主区标题栏：sparkles 图标 + 「智能清理」+ 副标题；右侧 3 个风险筛选 chips（全部 / 仅安全 / 需复核），用 `DesignChip` 的 active 态
+- 分组卡：当前展开的分组用 `DesignCard(.elevated)` 显示完整 8 列表格（32 / 80 / 32 / 1fr / 110 / 110 / 70 / 24）+ 头部带分类色顶部渐变叠加；其他分组用 `DesignCard(.default)` 折叠显示一行（复选框 + 色块 + 标题/副标题 + 大小 + chevron）
+- 项目行：组合 `DesignCheckbox` + `DesignRisk` + `DesignGlyph`（缩写自名字前两位）+ 名称/路径 + 说明 + 最近访问 + 大小 + ellipsis；选中行整体淡蓝背景
+- 底部浮动操作栏（FAB）：`DesignCheckbox`（已选中全清开关）+ 「已选中 N 项」+ 18pt 渐变大数字「· X.X GB」+ 风险分布（只显示非零，颜色编码）+「仅勾选安全项」ghost 按钮 +「立即清理 X.X GB」primary 按钮带 sparkles 图标
+
+**SmartCleanupModel**（`DiskCleaner/Features/SmartCleanupModel.swift`）
+
+`@Observable` final class 把所有渲染状态收拢：
+
+- `categories: [SmartCleanupCategory]`（6 个内置，每个含 `items: [SmartCleanupItem]` 数组）
+- `selectedItemIDs: Set<UUID>` —— 跨分组选中集合
+- `expandedCategoryID: String?` —— 当前展开分组（互斥）
+- `activeCategoryID: String?` —— 左侧 focus
+- `filter: SmartCleanupRiskFilter` —— 全部 / 仅安全 / 需复核
+- `toggle / toggleAll / selectOnlySafeItems / focusCategory / expand` 等 mutators
+- `groupCheckboxState(_:)` 三态算法：全选 → .on，部分 → .indeterminate，未选 → .off
+- `SmartCleanupCategory.samples()` 提供占位数据，所有可见文案走 i18n key —— 接真实引擎时把这个 factory 换掉即可
+
+**CleaningStateView**（追加到 `DiskCleaner/Design/StateViews.swift`）
+
+§4.3 ✨ 的清理过渡屏，先实现成可独立预览的组件：
+
+- 320pt 呼吸光晕背景（3s 周期 `easeInOut.repeatForever`）
+- 三层同心轨道（外 110pt 蓝 / 中 85pt 紫反向 / 内 60pt 青），每层各挂一个发光小球，速度 18s / 13s / 8s，相位错开 0° / 120° / 240°
+- 中央 48pt 渐变大数字 `已释放 X.X GB / 共 Y.Y GB`（白→blueHi→cyan）
+- 任务列表 3 种状态：
+  - done —— 绿色对勾圆 + 100% 进度条 + 绿色数值
+  - running —— 蓝色旋转圆环图标 + 流动光斑进度条 + 卡片蓝色光晕
+  - queued —— 虚线序号圆 + 0% 进度条 + 卡片整体 `opacity: 0.55`
+- 用 `@State pulse / orbit` 驱动呼吸 + 公转动画，符合 README §4.3 实现要点
+
+**Feature 路由**
+
+- `Feature` 枚举新增 `.smartCleanup` case（紧跟 `.overview` 之后）；i18n key `feature.smart_cleanup`，图标 `sparkles`
+- ContentView `detailView` 路由 `.smartCleanup` → `SmartCleanupView`
+- DashboardView 新增 `onRunSmartCleanup` / `onViewAllSuggestions` 两个回调，被 Health Score CTA、Smart Cleanup 段落「查看全部 →」、suggestion 卡的「查看」三处触发
+- ContentView 把这两个回调都接到 `selection = .smartCleanup`
+- Toolbar `toolbar.action.cleanup` 按钮（Dashboard 屏右上）也改为跳到 `.smartCleanup`
+
+### 改动
+
+**i18n 字符串**
+
+- `Localizable.xcstrings` 新增 54 条 key（zh-Hans + en），覆盖 `risk.*` / `smartcleanup.*` / `feature.smart_cleanup` / `state.cleaning.*`，总条目 278 → 332
+- 含 6 个分类的 title + summary、9 条样本 cache item 的 reason、6 个相对时间标签（today / yesterday / 2/3/4/8 hours/days/weeks/months ago）、FAB 中 4 个数量统计、`smartcleanup.col.*` 5 个表头
+
+### 后续
+
+Sprint 3 候选（按 README §10）：
+
+- Storage Analyzer Sunburst（可先 treemap 占位）
+- 把 Dashboard / SmartCleanup 的 placeholder 数据切到 `DiskCleanerCore` 的真实扫描结果（需新做类别分组器）
+- 把「立即清理 X.X GB」从 stub 接到 `DeletionService` + 路由到 `CleaningStateView`（已就绪）+ 自动跳转到 `SuccessStateView`
+
 ## [0.9.0] — 2026-05-26 — DiskFlow Sprint 2: Dashboard
 
 完整实现 DiskFlow §4.1 的 Overview / Dashboard 屏，覆盖 1.5fr/1fr 主网格 + Donut chart + Health Score + Memory mini + 3 张 Smart Cleanup 建议卡。同时把 5 个常用 atom 抽成独立组件供后续 Sprint 复用。

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
   <meta charset="utf-8" />
   <title>DiskFlow · Hi-fi Design</title>
@@ -8,11 +8,10 @@
   <style>
     html, body { margin: 0; padding: 0; height: 100%; background: #07090d; overflow: hidden; }
     #root { width: 100%; height: 100%; }
-    /* design canvas styles get overridden where they affect the warm canvas bg.
-       Keep the canvas dark to suit the design. */
     body { background: #0a0d14 !important; }
-    /* DesignCanvas section titles need to be light on dark */
+    body.canvas-light { background: #ebe9e3 !important; }
     [class*='dc-'] [contenteditable] { color: var(--t-1) !important; }
+    body.canvas-light [class*='dc-'] [contenteditable] { color: #1a1f2c !important; }
   </style>
 
   <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
@@ -23,67 +22,178 @@
   <div id="root"></div>
 
   <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
   <script type="text/babel" src="hifi-shared.jsx"></script>
   <script type="text/babel" src="hifi-dashboard.jsx"></script>
   <script type="text/babel" src="hifi-smart-cleanup.jsx"></script>
   <script type="text/babel" src="hifi-screens-1.jsx"></script>
   <script type="text/babel" src="hifi-screens-2.jsx"></script>
+  <script type="text/babel" src="hifi-v10.jsx"></script>
+  <script type="text/babel" src="hifi-v11.jsx"></script>
+  <script type="text/babel" src="hifi-v12.jsx"></script>
+  <script type="text/babel" src="hifi-v13.jsx"></script>
 
   <script type="text/babel">
-    // Standard mac desktop window dimensions for the artboards
+    // 标准 macOS 桌面窗口尺寸
     const W = 1280, H = 800;
 
+    const TWEAK_DEFAULTS = /*EDITMODE-BEGIN*/{
+      "theme": "dark"
+    }/*EDITMODE-END*/;
+
     function App() {
+      const [t, setTweak] = useTweaks(TWEAK_DEFAULTS);
+
+      // 切换 body class 让画布跟随
+      React.useEffect(() => {
+        document.body.classList.toggle('canvas-light', t.theme === 'light');
+      }, [t.theme]);
+
+      // 整个画布所有 frame 都套一层 .df-light 类
+      const themeClass = t.theme === 'light' ? 'df-light' : '';
+
       return (
-        <DesignCanvas>
-          <DCSection id="primary" title="01 · 主要屏幕" subtitle="用户 90% 的时间会停留在这四屏。">
-            <DCArtboard id="dashboard" label="仪表盘 · 总览" width={W} height={H}>
-              <HiFiDashboard />
-            </DCArtboard>
-            <DCArtboard id="smart-cleanup" label="智能清理中心 · “查看全部”跳转目标 ✨" width={W} height={H}>
-              <HiFiSmartCleanup />
-            </DCArtboard>
-            <DCArtboard id="analyzer" label="存储分析 · 旭日图钻取" width={W} height={H}>
-              <HiFiAnalyzer />
-            </DCArtboard>
-            <DCArtboard id="large-files" label="大文件查找 · 表格 + 预览" width={W} height={H}>
-              <HiFiLargeFiles />
-            </DCArtboard>
-            <DCArtboard id="duplicates" label="重复文件清理 · 左右对照" width={W} height={H}>
-              <HiFiDuplicates />
-            </DCArtboard>
-          </DCSection>
+        <div className={themeClass} style={{ width: '100%', height: '100%' }}>
+          <DesignCanvas>
+            {/* ============ v1.0 当前版本 ============ */}
+            <DCSection id="primary" title="01 · 主要屏幕（v1.0）" subtitle="用户 90% 的时间会停留在这五屏。">
+              <DCArtboard id="dashboard" label="仪表盘 · 总览" width={W} height={H}>
+                <HiFiDashboard />
+              </DCArtboard>
+              <DCArtboard id="smart-cleanup" label="智能清理中心 · “查看全部”跳转 ✨" width={W} height={H}>
+                <HiFiSmartCleanup />
+              </DCArtboard>
+              <DCArtboard id="analyzer" label="存储分析 · 旭日图钻取" width={W} height={H}>
+                <HiFiAnalyzer />
+              </DCArtboard>
+              <DCArtboard id="large-files" label="大文件查找 · 表格 + 预览" width={W} height={H}>
+                <HiFiLargeFiles />
+              </DCArtboard>
+              <DCArtboard id="duplicates" label="重复文件清理 · 左右对照" width={W} height={H}>
+                <HiFiDuplicates />
+              </DCArtboard>
+            </DCSection>
 
-          <DCSection id="secondary" title="02 · 次要屏幕" subtitle="内存监控、应用卸载、设置。">
-            <DCArtboard id="memory" label="内存监控 · 实时 RAM + 进程" width={W} height={H}>
-              <HiFiMemory />
-            </DCArtboard>
-            <DCArtboard id="apps" label="应用卸载 · 网格 + 残留数据" width={W} height={H}>
-              <HiFiApps />
-            </DCArtboard>
-            <DCArtboard id="settings" label="设置" width={W} height={H}>
-              <HiFiSettings />
-            </DCArtboard>
-          </DCSection>
+            <DCSection id="secondary" title="02 · 次要屏幕" subtitle="内存监控、应用卸载、设置。">
+              <DCArtboard id="memory" label="内存监控 · 实时 RAM + 进程" width={W} height={H}>
+                <HiFiMemory />
+              </DCArtboard>
+              <DCArtboard id="apps" label="应用卸载 · 网格 + 残留数据" width={W} height={H}>
+                <HiFiApps />
+              </DCArtboard>
+              <DCArtboard id="settings" label="设置" width={W} height={H}>
+                <HiFiSettings />
+              </DCArtboard>
+            </DCSection>
 
-          <DCSection id="states" title="03 · 状态屏" subtitle="点击「运行智能清理」→ 清理中过渡 → 完成。前后衔接的状态流。">
-            <DCArtboard id="empty"    label="空状态 · 首次启动"        width={W} height={H}>
-              <HiFiEmpty />
-            </DCArtboard>
-            <DCArtboard id="loading"  label="加载中 · 扫描中"           width={W} height={H}>
-              <HiFiLoading />
-            </DCArtboard>
-            <DCArtboard id="cleaning" label="清理中 · 过渡动画 ✨"       width={W} height={H}>
-              <HiFiCleaning />
-            </DCArtboard>
-            <DCArtboard id="success"  label="成功 · 清理完成"           width={W} height={H}>
-              <HiFiSuccess />
-            </DCArtboard>
-            <DCArtboard id="error"    label="错误 · 需要权限"           width={W} height={H}>
-              <HiFiError />
-            </DCArtboard>
-          </DCSection>
-        </DesignCanvas>
+            <DCSection id="states" title="03 · 状态屏" subtitle="清理流：「运行智能清理」 → 清理中过渡 → 完成。">
+              <DCArtboard id="empty"    label="空状态 · 首次启动"        width={W} height={H}>
+                <HiFiEmpty />
+              </DCArtboard>
+              <DCArtboard id="loading"  label="加载中 · 扫描中"           width={W} height={H}>
+                <HiFiLoading />
+              </DCArtboard>
+              <DCArtboard id="cleaning" label="清理中 · 过渡动画 ✨"       width={W} height={H}>
+                <HiFiCleaning />
+              </DCArtboard>
+              <DCArtboard id="success"  label="成功 · 清理完成"           width={W} height={H}>
+                <HiFiSuccess />
+              </DCArtboard>
+              <DCArtboard id="error"    label="错误 · 需要权限"           width={W} height={H}>
+                <HiFiError />
+              </DCArtboard>
+            </DCSection>
+
+            {/* ============ v1.0 补完 ============ */}
+            <DCSection id="v10" title="04 · v1.0 补完" subtitle="发版前必做：外接磁盘主页 · 首启引导 · 两类确认弹窗 · 浅色模式（用 Tweaks 切换）">
+              <DCArtboard id="external-drives" label="外接磁盘 · 主页" width={W} height={H}>
+                <HiFiExternalDrives />
+              </DCArtboard>
+              <DCArtboard id="onboarding" label="首启引导 · 欢迎 + 权限" width={W} height={H}>
+                <HiFiOnboarding />
+              </DCArtboard>
+              <DCArtboard id="confirm-delete" label="确认弹窗 · 删除 > 1 GB" width={W} height={H}>
+                <HiFiConfirmDelete />
+              </DCArtboard>
+              <DCArtboard id="confirm-uninstall" label="确认弹窗 · 完全卸载应用" width={W} height={H}>
+                <HiFiConfirmUninstall />
+              </DCArtboard>
+            </DCSection>
+
+            {/* ============ v1.1 Power User ============ */}
+            <DCSection id="v11" title="05 · v1.1 · Power User 阵地" subtitle="⌘K 命令面板 · 保存搜索 · 键盘快捷键 · 自定义扫描规则">
+              <DCArtboard id="palette" label="⌘K 命令面板" width={W} height={H}>
+                <HiFiCommandPalette />
+              </DCArtboard>
+              <DCArtboard id="saved-searches" label="保存的搜索 · 大文件页变体" width={W} height={H}>
+                <HiFiSavedSearches />
+              </DCArtboard>
+              <DCArtboard id="shortcuts" label="键盘快捷键速查 · 按 ?" width={W} height={H}>
+                <HiFiShortcuts />
+              </DCArtboard>
+              <DCArtboard id="scan-rules" label="自定义扫描规则 · 设置内页" width={W} height={H}>
+                <HiFiScanRules />
+              </DCArtboard>
+            </DCSection>
+
+            {/* ============ v1.2 信心与可控感 ============ */}
+            <DCSection id="v12" title="06 · v1.2 · 信心与可控感" subtitle="废纸篓恢复 · 清理历史 · 调度日历 · 通知中心">
+              <DCArtboard id="trash-recovery" label="废纸篓 · 可恢复列表" width={W} height={H}>
+                <HiFiTrashRecovery />
+              </DCArtboard>
+              <DCArtboard id="cleanup-history" label="清理历史时间线" width={W} height={H}>
+                <HiFiCleanupHistory />
+              </DCArtboard>
+              <DCArtboard id="schedule" label="调度日历 · 周视图" width={W} height={H}>
+                <HiFiSchedule />
+              </DCArtboard>
+              <DCArtboard id="notifications" label="通知中心 · 抽屉" width={W} height={H}>
+                <HiFiNotifications />
+              </DCArtboard>
+            </DCSection>
+
+            {/* ============ v1.3 系统集成 ============ */}
+            <DCSection id="v13" title="07 · v1.3 · 系统集成" subtitle="菜单栏 mini-app · 桌面 Widget · Apple Shortcuts · iCloud 同步">
+              <DCArtboard id="menubar" label="菜单栏 mini-app · 不必打开主窗口" width={W} height={H}>
+                <HiFiMenubar />
+              </DCArtboard>
+              <DCArtboard id="widget" label="桌面 Widget · 中号 + 小号" width={W} height={H}>
+                <HiFiWidget />
+              </DCArtboard>
+              <DCArtboard id="shortcuts-int" label="Apple Shortcuts 集成" width={W} height={H}>
+                <HiFiShortcutsIntegration />
+              </DCArtboard>
+              <DCArtboard id="icloud" label="iCloud 偏好同步" width={W} height={H}>
+                <HiFiICloudSync />
+              </DCArtboard>
+            </DCSection>
+          </DesignCanvas>
+
+          <TweaksPanel title="Tweaks">
+            <TweakSection label="主题">
+              <TweakRadio
+                label="界面"
+                value={t.theme}
+                onChange={(v) => setTweak('theme', v)}
+                options={[
+                  { value: 'dark',  label: '深色' },
+                  { value: 'light', label: '浅色' },
+                ]}
+              />
+              <div style={{ fontSize: 10.5, color: 'rgba(0,0,0,0.5)', lineHeight: 1.5, marginTop: -4 }}>
+                深色为主，浅色作为系统跟随的备选。所有屏幕都会同步切换。
+              </div>
+            </TweakSection>
+
+            <TweakSection label="提示">
+              <div style={{ fontSize: 11, lineHeight: 1.5, color: 'rgba(0,0,0,0.55)' }}>
+                · 拖拽卡片可重新排序<br/>
+                · 点击右上展开图标 → 全屏聚焦单屏<br/>
+                · 全屏后 ← / → / Esc 切换
+              </div>
+            </TweakSection>
+          </TweaksPanel>
+        </div>
       );
     }
 
