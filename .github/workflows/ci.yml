@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  core-package:
+    name: DiskCleanerCore (build + test)
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show Swift toolchain
+        run: swift --version
+
+      - name: Build
+        working-directory: DiskCleanerCore
+        run: swift build
+
+      - name: Test
+        working-directory: DiskCleanerCore
+        run: swift test
+
+  # The full app build is added once the DiskCleanerCore package has been
+  # wired into the Xcode project and a shared scheme exists (see README).
+  # Uncomment when ready:
+  #
+  # app-build:
+  #   name: DiskCleaner app (build)
+  #   runs-on: macos-latest
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v4
+  #     - name: Build app
+  #       run: |
+  #         xcodebuild build \
+  #           -project DiskCleaner.xcodeproj \
+  #           -scheme DiskCleaner \
+  #           -destination 'platform=macOS' \
+  #           CODE_SIGNING_ALLOWED=NO

@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		7B8692F02FC4BC7D00184027 /* DiskCleanerCore in Frameworks */ = {isa = PBXBuildFile; productRef = 7B8692EF2FC4BC7D00184027 /* DiskCleanerCore */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		7B8692BF2FC4A4FD00184027 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -52,6 +56,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				7B8692F02FC4BC7D00184027 /* DiskCleanerCore in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -112,6 +117,7 @@
 			);
 			name = DiskCleaner;
 			packageProductDependencies = (
+				7B8692EF2FC4BC7D00184027 /* DiskCleanerCore */,
 			);
 			productName = DiskCleaner;
 			productReference = 7B8692AE2FC4A4FB00184027 /* DiskCleaner.app */;
@@ -195,6 +201,9 @@
 			);
 			mainGroup = 7B8692A52FC4A4FB00184027;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				7B8692EE2FC4BC7D00184027 /* XCLocalSwiftPackageReference "DiskCleanerCore" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 7B8692AF2FC4A4FB00184027 /* Products */;
 			projectDirPath = "";
@@ -398,19 +407,17 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 26XR4Z2WNN;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSMainStoryboardFile = Main;
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = X.DiskCleaner;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.vomo.diskcleaner;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -431,19 +438,17 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = 26XR4Z2WNN;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
-				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSMainStoryboardFile = Main;
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = X.DiskCleaner;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.vomo.diskcleaner;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -465,7 +470,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = X.DiskCleanerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.vomo.diskcleaner.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -486,7 +491,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = X.DiskCleanerTests;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.vomo.diskcleaner.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -505,7 +510,7 @@
 				DEVELOPMENT_TEAM = 26XR4Z2WNN;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = X.DiskCleanerUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.vomo.diskcleaner.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -524,7 +529,7 @@
 				DEVELOPMENT_TEAM = 26XR4Z2WNN;
 				GENERATE_INFOPLIST_FILE = YES;
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = X.DiskCleanerUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = ai.vomo.diskcleaner.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = NO;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
@@ -575,6 +580,20 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		7B8692EE2FC4BC7D00184027 /* XCLocalSwiftPackageReference "DiskCleanerCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = DiskCleanerCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		7B8692EF2FC4BC7D00184027 /* DiskCleanerCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = DiskCleanerCore;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 7B8692A62FC4A4FB00184027 /* Project object */;
 }
