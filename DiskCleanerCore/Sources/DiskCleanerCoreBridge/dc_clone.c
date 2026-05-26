@@ -10,6 +10,7 @@
 #include "DiskCleanerCoreBridge.h"
 
 #include <string.h>
+#include <unistd.h>
 #include <sys/attr.h>
 #include <sys/clonefile.h>
 

@@ -22,7 +22,7 @@ final class AuditLogViewModel {
     func load() {
         isLoading = true
         Task {
-            let recent = await AuditLog.shared.readRecent(limit: 500)
+            let recent = await AuditLog.shared.readRecent(limit: AppSettings.auditLogMaxEntries())
             self.entries = recent
             self.isLoading = false
         }

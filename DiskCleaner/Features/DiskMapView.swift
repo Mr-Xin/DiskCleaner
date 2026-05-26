@@ -3,8 +3,7 @@
 //  DiskCleaner
 //
 //  Feature 1 — disk space visualization: scan a folder and explore it as a
-//  treemap plus a size-ordered breakdown list. Reports live progress and
-//  flags Full Disk Access issues when many directories are unreadable.
+//  treemap plus a size-ordered breakdown list.
 //
 
 import SwiftUI
@@ -22,7 +21,7 @@ final class DiskMapViewModel {
     var currentNode: FileNode?
     var selectedNodeID: UUID?
     var isScanning = false
-    var errorMessage: String?
+    var lastError: (any Error)?
     var scanProgress: ScanProgress?
     var permissionWarning: String?
 
@@ -41,8 +40,20 @@ final class DiskMapViewModel {
         startScan(url)
     }
 
-    func scanHomeFolder() {
-        startScan(FileManager.default.homeDirectoryForCurrentUser)
+    /// Scans whatever the user picked as their default scan root in Settings.
+    func scanDefault() {
+        switch AppSettings.defaultScanRoot() {
+        case .home:
+            startScan(FileManager.default.homeDirectoryForCurrentUser)
+        case .lastUsed:
+            if let last = lastUsedScanRoot() {
+                startScan(last)
+            } else {
+                chooseFolder()
+            }
+        case .ask:
+            chooseFolder()
+        }
     }
 
     func rescan() {
@@ -57,8 +68,9 @@ final class DiskMapViewModel {
     private func startScan(_ url: URL) {
         scanTask?.cancel()
         rootURL = url
+        storeLastScanned(url)
         isScanning = true
-        errorMessage = nil
+        lastError = nil
         scanProgress = nil
         permissionWarning = nil
         tree = nil
@@ -83,7 +95,7 @@ final class DiskMapViewModel {
             } catch is CancellationError {
                 // Superseded by a newer scan — ignore.
             } catch {
-                self?.errorMessage = error.localizedDescription
+                self?.lastError = error
             }
             self?.isScanning = false
         }
@@ -111,7 +123,7 @@ final class DiskMapViewModel {
                 _ = try await DeletionService().moveToTrash([node.url], source: "disk-map")
                 self?.rescan()
             } catch {
-                self?.errorMessage = error.localizedDescription
+                self?.lastError = error
             }
         }
     }
@@ -129,6 +141,19 @@ final class DiskMapViewModel {
             if let url = URL(string: urlString), NSWorkspace.shared.open(url) { return }
         }
         NSWorkspace.shared.open(URL(fileURLWithPath: "/System/Applications/System Settings.app"))
+    }
+
+    // MARK: - Last-used scan root
+
+    private func lastUsedScanRoot() -> URL? {
+        guard let path = UserDefaults.standard.string(forKey: AppSettings.lastScannedPathKey) else {
+            return nil
+        }
+        return URL(fileURLWithPath: path)
+    }
+
+    private func storeLastScanned(_ url: URL) {
+        UserDefaults.standard.set(url.path, forKey: AppSettings.lastScannedPathKey)
     }
 }
 
@@ -152,8 +177,8 @@ struct DiskMapView: View {
             Button { model.chooseFolder() } label: {
                 Label("选择文件夹", systemImage: "folder")
             }
-            Button { model.scanHomeFolder() } label: {
-                Label("扫描主目录", systemImage: "house")
+            Button { model.scanDefault() } label: {
+                Label("扫描默认位置", systemImage: "house")
             }
             Button { model.navigateUp() } label: {
                 Label("上一级", systemImage: "arrow.up")
@@ -179,12 +204,8 @@ struct DiskMapView: View {
     private var content: some View {
         if model.isScanning {
             scanningView
-        } else if let message = model.errorMessage {
-            ContentUnavailableView(
-                "扫描失败",
-                systemImage: "exclamationmark.triangle",
-                description: Text(message)
-            )
+        } else if let error = model.lastError {
+            errorView(error)
         } else if let node = model.currentNode {
             VStack(spacing: 0) {
                 if let warning = model.permissionWarning {
@@ -215,9 +236,9 @@ struct DiskMapView: View {
             ContentUnavailableView {
                 Label("还没有扫描结果", systemImage: "chart.pie")
             } description: {
-                Text("选择一个文件夹，或扫描你的主目录，看看空间被什么占用了。")
+                Text("选择一个文件夹，或扫描默认位置，看看空间被什么占用了。")
             } actions: {
-                Button("扫描主目录") { model.scanHomeFolder() }
+                Button("扫描默认位置") { model.scanDefault() }
             }
         }
     }
@@ -240,6 +261,22 @@ struct DiskMapView: View {
             }
             Button("取消", role: .cancel) { model.cancelScan() }
                 .keyboardShortcut(.escape, modifiers: [])
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(30)
+    }
+
+    private func errorView(_ error: any Error) -> some View {
+        VStack(spacing: 14) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 40))
+                .foregroundStyle(.orange)
+            ErrorView(
+                error: error,
+                onRetry: { model.rescan() },
+                onOpenSettings: { model.openSystemSettings() }
+            )
+            .frame(maxWidth: 460)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(30)

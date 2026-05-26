@@ -22,7 +22,7 @@ final class JunkCleaningViewModel {
     var isCleaning = false
     var hasScanned = false
     var statusMessage: String?
-    var errorMessage: String?
+    var lastError: (any Error)?
     var scanProgress: JunkScanProgress?
 
     @ObservationIgnored private var scanTask: Task<Void, Never>?
@@ -46,7 +46,7 @@ final class JunkCleaningViewModel {
     func scan() {
         scanTask?.cancel()
         isScanning = true
-        errorMessage = nil
+        lastError = nil
         statusMessage = nil
         scanProgress = nil
         items = []
@@ -66,7 +66,7 @@ final class JunkCleaningViewModel {
             } catch is CancellationError {
                 // ignored
             } catch {
-                self?.errorMessage = error.localizedDescription
+                self?.lastError = error
             }
             self?.isScanning = false
         }
@@ -93,7 +93,7 @@ final class JunkCleaningViewModel {
         let targets = items.filter { selectedIDs.contains($0.id) }
         guard !targets.isEmpty else { return }
         isCleaning = true
-        errorMessage = nil
+        lastError = nil
         statusMessage = nil
         Task { [weak self] in
             do {
@@ -110,7 +110,7 @@ final class JunkCleaningViewModel {
                     self?.statusMessage = "已清理 \(result.trashed.count) 项；\(result.failures.count) 项失败（可能需要管理员权限）。"
                 }
             } catch {
-                self?.errorMessage = error.localizedDescription
+                self?.lastError = error
             }
             self?.isCleaning = false
         }
@@ -170,7 +170,17 @@ struct JunkCleaningView: View {
 
     @ViewBuilder
     private var emptyState: some View {
-        if model.hasScanned {
+        if let error = model.lastError {
+            VStack(spacing: 14) {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 40))
+                    .foregroundStyle(.orange)
+                ErrorView(error: error, onRetry: { model.scan() })
+                    .frame(maxWidth: 460)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .padding(30)
+        } else if model.hasScanned {
             ContentUnavailableView("没有发现可清理的垃圾", systemImage: "checkmark.circle")
         } else {
             ContentUnavailableView {
@@ -210,8 +220,8 @@ struct JunkCleaningView: View {
             if let status = model.statusMessage {
                 Text(status).foregroundStyle(.secondary)
             }
-            if let error = model.errorMessage {
-                Text(error).foregroundStyle(.red)
+            if let error = model.lastError {
+                ErrorView(error: error, onRetry: { model.cleanSelected() })
             }
             ForEach(model.groupedItems, id: \.category) { group in
                 Section(categoryTitle(group.category)) {

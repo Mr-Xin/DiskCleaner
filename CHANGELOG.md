@@ -2,6 +2,44 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，版本号采用 [Semantic Versioning](https://semver.org/lang/zh-CN/)。
 
+## [0.3.0] — 2026-05-26
+
+UI/UX 打磨：应用图标、设置面板、键盘快捷键、更友好的错误提示。
+
+### 新增
+
+**应用层**
+
+- 应用图标（placeholder）：渐变背景 + 饼图剪影，Python 生成的全套 macOS 尺寸（16/32/64/128/256/512/1024，含 @2x）。
+- **设置面板**（`Cmd+,`），两个 tab：
+  - **常规**：默认扫描位置（主目录 / 上次使用的位置 / 每次询问）。
+  - **检测**：大文件阈值（10–2048 MB）、审计日志保留上限（50–5000 条）。
+- **主菜单「功能」+ 键盘快捷键** `Cmd+1..5` 切换五个功能页（磁盘可视化、垃圾清理、大文件/重复文件、应用卸载、最近操作）。
+- **`ErrorView` 共享错误组件**：自动从 `LocalizedError` 取出 errorDescription + recoverySuggestion，可选「重试」「打开系统设置」动作按钮。
+
+**引擎**
+
+- `DeletionError` 实现 `LocalizedError`：受保护路径的删除拒绝会显示明确说明与建议。
+
+**About**
+
+- 版本号提升至 `0.3.0`（`MARKETING_VERSION`）。
+- 加入 `INFOPLIST_KEY_NSHumanReadableCopyright`：系统自带「关于 DiskCleaner」对话框会显示版本与版权 / 许可证信息。
+
+### 改进
+
+- 各视图模型从 `errorMessage: String?` 升级为 `lastError: (any Error)?`；UI 通过 `ErrorView` 同时展示标题与建议动作。
+- 磁盘可视化页：「扫描主目录」按钮改为「扫描默认位置」，遵循设置项行为；记录最近扫描位置以支持 lastUsed 选项。
+- 大文件查找使用设置项中的阈值（替代硬编码的 100MB）。
+- 审计日志读取使用设置项中的上限（替代硬编码的 500）。
+
+### 待办 / 已知限制
+
+- 中英文本地化（String Catalog）—— 留到 v0.4。
+- `getattrlistbulk` 全面迁移 —— 留到 v0.4。
+- 应用图标是 placeholder，欢迎替换为正式设计稿。
+- 代码签名 / 公证 / 打包 —— v1.0 主题。
+
 ## [0.2.0] — 2026-05-26
 
 让现有功能更扎实——扫描看得见、可取消，APFS 克隆不再误判，删了什么都查得到。

@@ -24,7 +24,7 @@ final class UninstallViewModel {
     var isLoadingLeftovers = false
     var isUninstalling = false
     var statusMessage: String?
-    var errorMessage: String?
+    var lastError: (any Error)?
 
     var selectedApp: InstalledApp? {
         guard let id = selectedAppID else { return nil }
@@ -37,14 +37,14 @@ final class UninstallViewModel {
 
     func loadApps() {
         isLoadingApps = true
-        errorMessage = nil
-        Task {
+        lastError = nil
+        Task { [weak self] in
             do {
-                self.apps = try await AppUninstaller().installedApps()
+                self?.apps = try await AppUninstaller().installedApps()
             } catch {
-                self.errorMessage = error.localizedDescription
+                self?.lastError = error
             }
-            self.isLoadingApps = false
+            self?.isLoadingApps = false
         }
     }
 
@@ -53,19 +53,19 @@ final class UninstallViewModel {
         leftovers = []
         leftoverSelection = []
         statusMessage = nil
-        errorMessage = nil
+        lastError = nil
         isLoadingLeftovers = true
-        Task {
+        Task { [weak self] in
             do {
                 let found = try await AppUninstaller().leftovers(for: app)
-                self.leftovers = found
-                self.leftoverSelection = Set(
+                self?.leftovers = found
+                self?.leftoverSelection = Set(
                     found.filter { $0.confidence == .high }.map { $0.id }
                 )
             } catch {
-                self.errorMessage = error.localizedDescription
+                self?.lastError = error
             }
-            self.isLoadingLeftovers = false
+            self?.isLoadingLeftovers = false
         }
     }
 
@@ -89,24 +89,24 @@ final class UninstallViewModel {
         let targets = [app.bundleURL] + leftoverURLs
 
         isUninstalling = true
-        errorMessage = nil
+        lastError = nil
         statusMessage = nil
-        Task {
+        Task { [weak self] in
             do {
                 let result = try await DeletionService().moveToTrash(targets, source: "uninstall")
                 if result.failures.isEmpty {
-                    self.statusMessage = "已将 \(app.name) 及 \(leftoverURLs.count) 个关联文件移到废纸篓。"
+                    self?.statusMessage = "已将 \(app.name) 及 \(leftoverURLs.count) 个关联文件移到废纸篓。"
                 } else {
-                    self.statusMessage = "已移除 \(result.trashed.count) 项；\(result.failures.count) 项失败（应用本体可能需要管理员权限）。"
+                    self?.statusMessage = "已移除 \(result.trashed.count) 项；\(result.failures.count) 项失败（应用本体可能需要管理员权限）。"
                 }
-                self.apps.removeAll { $0.id == app.id }
-                self.selectedAppID = nil
-                self.leftovers = []
-                self.leftoverSelection = []
+                self?.apps.removeAll { $0.id == app.id }
+                self?.selectedAppID = nil
+                self?.leftovers = []
+                self?.leftoverSelection = []
             } catch {
-                self.errorMessage = error.localizedDescription
+                self?.lastError = error
             }
-            self.isUninstalling = false
+            self?.isUninstalling = false
         }
     }
 }
@@ -214,14 +214,14 @@ struct UninstallView: View {
             if let status = model.statusMessage {
                 Text(status).foregroundStyle(.secondary)
             }
-            if let error = model.errorMessage {
-                Text(error).foregroundStyle(.red)
+            if let error = model.lastError {
+                ErrorView(error: error)
             }
 
             let highConfidence = model.leftovers.filter { $0.confidence == .high }
             let lowConfidence = model.leftovers.filter { $0.confidence == .low }
 
-            if model.leftovers.isEmpty {
+            if model.leftovers.isEmpty && model.lastError == nil {
                 Text("没有找到明显的关联文件。")
                     .foregroundStyle(.secondary)
             }

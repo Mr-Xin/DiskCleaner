@@ -1,10 +1,24 @@
 import Foundation
 
 /// Errors that can occur while deleting files.
-public enum DeletionError: Error, Sendable {
+public enum DeletionError: Error, Sendable, LocalizedError {
 
     /// The path is protected and the deletion was refused (see `ProtectedPaths`).
     case pathIsProtected(URL)
+
+    public var errorDescription: String? {
+        switch self {
+        case .pathIsProtected(let url):
+            return "无法删除受保护路径：\(url.lastPathComponent)"
+        }
+    }
+
+    public var recoverySuggestion: String? {
+        switch self {
+        case .pathIsProtected:
+            return "DiskCleaner 永远不会删除系统关键路径或你的用户主目录本身，避免误操作。如果你确实要删除这个文件，请在访达里手动操作。"
+        }
+    }
 }
 
 /// A single failed deletion.

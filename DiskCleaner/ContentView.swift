@@ -2,8 +2,9 @@
 //  ContentView.swift
 //  DiskCleaner
 //
-//  The application shell: a Full Disk Access gate, then a sidebar that routes
-//  to the four feature screens plus the audit log.
+//  The application shell. The top-level Feature selection is owned by
+//  `DiskCleanerApp` so the menu bar's CommandMenu can drive it; ContentView
+//  accepts it as a `Binding`.
 //
 
 import SwiftUI
@@ -42,11 +43,12 @@ enum Feature: String, CaseIterable, Identifiable {
 
 struct ContentView: View {
 
-    @State private var selection: Feature? = .visualization
+    @Binding var selection: Feature?
     @State private var hasFullDiskAccess: Bool
     @State private var showOnboarding: Bool
 
-    init() {
+    init(selection: Binding<Feature?>) {
+        self._selection = selection
         let granted = PermissionsChecker().hasFullDiskAccess()
         _hasFullDiskAccess = State(initialValue: granted)
         _showOnboarding = State(initialValue: !granted)
@@ -90,5 +92,5 @@ struct ContentView: View {
 }
 
 #Preview {
-    ContentView()
+    ContentView(selection: .constant(.visualization))
 }

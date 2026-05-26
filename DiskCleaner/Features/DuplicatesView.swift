@@ -36,7 +36,7 @@ final class DuplicatesViewModel {
     var duplicateGroups: [DuplicateGroup] = []
     var isScanning = false
     var hasScanned = false
-    var errorMessage: String?
+    var lastError: (any Error)?
     var scanProgress: ScanProgress?
     var phaseMessage = ""
     var permissionWarning: String?
@@ -73,7 +73,7 @@ final class DuplicatesViewModel {
         scanTask?.cancel()
         rootURL = url
         isScanning = true
-        errorMessage = nil
+        lastError = nil
         scanProgress = nil
         phaseMessage = "正在扫描文件树…"
         permissionWarning = nil
@@ -95,7 +95,8 @@ final class DuplicatesViewModel {
 
                 guard let self else { return }
                 let tree = scanResult.root
-                self.largeFiles = LargeFileFinder().find(in: tree)
+                let thresholdBytes = Int64(AppSettings.largeFileThresholdMB()) * 1024 * 1024
+                self.largeFiles = LargeFileFinder().find(in: tree, minimumSize: thresholdBytes)
 
                 let urls = tree.allFiles().map { $0.url }
                 let groups = try await DuplicateFinder().findDuplicates(among: urls)
@@ -109,7 +110,7 @@ final class DuplicatesViewModel {
             } catch is CancellationError {
                 // ignored
             } catch {
-                self?.errorMessage = error.localizedDescription
+                self?.lastError = error
             }
             self?.isScanning = false
             self?.phaseMessage = ""
@@ -126,7 +127,7 @@ final class DuplicatesViewModel {
                 _ = try await DeletionService().moveToTrash([url], source: "duplicates")
                 self?.rescan()
             } catch {
-                self?.errorMessage = error.localizedDescription
+                self?.lastError = error
             }
         }
     }
@@ -192,12 +193,8 @@ struct DuplicatesView: View {
     private var content: some View {
         if model.isScanning {
             scanningView
-        } else if let message = model.errorMessage {
-            ContentUnavailableView(
-                "分析失败",
-                systemImage: "exclamationmark.triangle",
-                description: Text(message)
-            )
+        } else if let error = model.lastError {
+            errorView(error)
         } else if !model.hasScanned {
             ContentUnavailableView {
                 Label("大文件 / 重复文件", systemImage: "doc.on.doc")
@@ -243,6 +240,22 @@ struct DuplicatesView: View {
             }
             Button("取消", role: .cancel) { model.cancelScan() }
                 .keyboardShortcut(.escape, modifiers: [])
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(30)
+    }
+
+    private func errorView(_ error: any Error) -> some View {
+        VStack(spacing: 14) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 40))
+                .foregroundStyle(.orange)
+            ErrorView(
+                error: error,
+                onRetry: { model.rescan() },
+                onOpenSettings: { model.openSystemSettings() }
+            )
+            .frame(maxWidth: 460)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(30)
